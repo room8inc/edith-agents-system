@@ -1,0 +1,51 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+error.log
+debug.log
+
+# Environment variables
+.env
+.env.local
+
+# Credentials - 絶対に公開しない
+search_console/credentials/*.json
+!search_console/credentials/.gitkeep
+!search_console/credentials/README.md
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Generated content (images are placeholders)
+# articles/*/images/*.png  # コメントアウト：画像も管理する場合
+
+# WordPress data
+wordpress/publish_data.json
+
+# Backup files
+*.backup
+*.bak
+*~

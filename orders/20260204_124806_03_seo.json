@@ -1,0 +1,21 @@
+{
+  "task_id": "20260204_124806_03_seo",
+  "priority": 3,
+  "assigned_agent": "seo_optimization_ashigaru",
+  "task_type": "seo_optimization",
+  "description": "SEO最適化・メタ情報作成",
+  "input_data": {
+    "content_reference": "20260204_124806_02_writing",
+    "target_keywords": [
+      "AI導入",
+      "デジタル化",
+      "起業家",
+      "業務効率化"
+    ]
+  },
+  "deadline": "15分",
+  "dependencies": [
+    "20260204_124806_02_writing"
+  ],
+  "status": "pending"
+}

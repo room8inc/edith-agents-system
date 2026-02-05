@@ -1,0 +1,20 @@
+{
+  "task_id": "20260204_124806_05_wordpress",
+  "priority": 5,
+  "assigned_agent": "wordpress_publishing_ashigaru",
+  "task_type": "wordpress_draft",
+  "description": "WordPress下書き投稿",
+  "input_data": {
+    "final_content": "20260204_124806_02_writing",
+    "seo_meta": "20260204_124806_03_seo",
+    "images": "20260204_124806_04_image",
+    "publish_mode": "draft_only"
+  },
+  "deadline": "10分",
+  "dependencies": [
+    "20260204_124806_02_writing",
+    "20260204_124806_03_seo",
+    "20260204_124806_04_image"
+  ],
+  "status": "pending"
+}

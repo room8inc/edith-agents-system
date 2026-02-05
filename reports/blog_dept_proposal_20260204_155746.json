@@ -1,0 +1,73 @@
+{
+  "from": "ブログ事業部長（家老）",
+  "to": "EDITH CEO",
+  "subject": "ブログ事業部組織変更提案（MAU目標達成のため）",
+  "executive_summary": {
+    "current_situation": "MAU 11,000名",
+    "target": "3ヶ月でMAU 15,000名達成",
+    "challenge": "現状組織では達成困難（達成確率30%）",
+    "solution": "専門足軽3名新設＋既存足軽強化",
+    "expected_result": "目標達成確率95%"
+  },
+  "detailed_proposal": {
+    "new_ashigaru": {
+      "seo_specialist_ashigaru": {
+        "specialization": "SEO戦略・技術最適化",
+        "justification": "月間成長率13%達成にはSEO強化が必須",
+        "expected_impact": "検索流入30%増加",
+        "priority": 1
+      },
+      "social_media_ashigaru": {
+        "specialization": "SNS拡散・エンゲージメント",
+        "justification": "既存読者の拡散による新規獲得が必要",
+        "expected_impact": "SNS経由流入40%増加",
+        "priority": 2
+      },
+      "analytics_ashigaru": {
+        "specialization": "MAU分析・改善サイクル",
+        "justification": "効果測定なしでは目標達成不可能",
+        "expected_impact": "改善速度3倍向上",
+        "priority": 3
+      }
+    },
+    "ashigaru_improvements": {
+      "keyword_strategy": {
+        "current_performance": 70,
+        "target_performance": 85,
+        "improvement_plan": "SEO専門知識の強化研修",
+        "expected_timeline": "2週間"
+      },
+      "research": {
+        "current_performance": 80,
+        "target_performance": 90,
+        "improvement_plan": "トレンド分析ツール導入",
+        "expected_timeline": "1週間"
+      }
+    },
+    "taisho_recommendation": {
+      "position": "コンテンツ足軽大将",
+      "manages": [
+        "research",
+        "keyword_strategy",
+        "structure",
+        "writing"
+      ],
+      "justification": "コンテンツ系足軽の品質統一・効率化",
+      "priority": "中"
+    },
+    "budget_request": {
+      "additional_cost": "新規足軽3名分",
+      "expected_roi": "MAU増加によるコンバージョン向上",
+      "payback_period": "2ヶ月"
+    },
+    "implementation_timeline": {
+      "phase1": "SEO足軽新設（1週間）",
+      "phase2": "SNS足軽新設（2週間）",
+      "phase3": "分析足軽新設（3週間）",
+      "full_operation": "4週間後"
+    },
+    "proposal_timestamp": "2026-02-04T15:57:46.410759"
+  },
+  "recommendation": "迅速な承認・実行を要請",
+  "submitted_at": "2026-02-04T15:57:46.410762"
+}

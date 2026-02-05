@@ -1,0 +1,16 @@
+{
+  "task_id": "20260204_124806_04_image",
+  "priority": 4,
+  "assigned_agent": "image_concept_ashigaru",
+  "task_type": "image_planning",
+  "description": "記事用画像企画・Gemini API指示生成",
+  "input_data": {
+    "article_theme": "FAXとAIのギャップ",
+    "visual_style": "プロフェッショナル・インフォグラフィック"
+  },
+  "deadline": "20分",
+  "dependencies": [
+    "20260204_124806_01_structure"
+  ],
+  "status": "pending"
+}

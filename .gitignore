@@ -1,0 +1,74 @@
+# 環境変数ファイル（機密情報）
+.env
+.env.local
+.env.*.local
+
+# macOS システムファイル
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python キャッシュファイル
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE/エディタファイル
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code 設定
+.claude/
+
+# ログファイル
+*.log
+logs/
+
+# 一時ファイル
+*.tmp
+*.temp
+temp/
+tmp/
+
+# OS生成ファイル
+*.pid
+*.seed
+*.pid.lock
+
+# 依存関係
+node_modules/
+.npm
+.yarn-integrity
+
+# Git内Git（サブモジュール以外）
+**/.git
+!.git
+
+# 画像生成時の一時ファイル
+*.png.tmp
+*.jpg.tmp
+
+# WordPress投稿の一時データ
+**/wordpress/temp/
+
+# 分析レポート（個人情報含む可能性）
+**/reports/personal/
+**/analytics/raw_data/
+
+# APIキー含有の可能性があるファイル
+**/config/api_keys.json
+**/secrets/

@@ -1,0 +1,16 @@
+{
+  "task_id": "20260204_124806_01_structure",
+  "priority": 1,
+  "assigned_agent": "content_structure_ashigaru",
+  "task_type": "structure_design",
+  "description": "記事構成設計（タイトル・見出し・感情導線）",
+  "input_data": {
+    "memo": "最近、うちの取引先の社長が「AIで業務効率化したい」って言ってきた。でも話聞いてると、まだFAXで発注してるし、在庫管理もExcelの手入力。メールの返事も3日かかる。これでAI導入って何から始めればいいんだって聞かれて困った。順番が完全に逆じゃない？\n",
+    "target_audience": "起業家・経営者",
+    "tone": "成田悠輔風毒舌",
+    "word_count_target": "2000-3000字"
+  },
+  "deadline": "30分",
+  "dependencies": [],
+  "status": "pending"
+}

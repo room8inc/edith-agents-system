@@ -1,0 +1,16 @@
+{
+  "task_id": "20260204_124806_02_writing",
+  "priority": 2,
+  "assigned_agent": "narita_writing_ashigaru",
+  "task_type": "content_writing",
+  "description": "成田悠輔風ライティング実行",
+  "input_data": {
+    "structure_reference": "20260204_124806_01_structure",
+    "tone_guidelines": "痛烈だが建設的、データ裏付け、読者共感"
+  },
+  "deadline": "45分",
+  "dependencies": [
+    "20260204_124806_01_structure"
+  ],
+  "status": "pending"
+}

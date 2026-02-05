@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# Credentials
+credentials/
+*_key.json
+*.json
+!package.json
+!*_config.json
+service_account*.json
+
+# Search Console
+blog_department/search_console/credentials/
+blog_department/search_console/*.json
+
+# Reports
+reports/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
