@@ -41,22 +41,22 @@ GEMINI_IMAGE_API_KEY_4=AIzaSy...  # 必須
 
 ### 2.1 使用API
 - **プロバイダー**: Google Gemini
-- **モデル**: `gemini-1.5-flash` または `gemini-1.5-pro`
-- **エンドポイント**: `https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent`
+- **モデル**: `gemini-3.0` （最新版）
+- **エンドポイント**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0:generateContent`
+- **API仕様書**: https://ai.google.dev/gemini-api/docs/gemini-3?hl=ja
 
-### 2.2 動作確認済みモデル（2026-02-04時点）
+### 2.2 動作確認済みモデル（2026-02-05時点）
 | モデル名 | ステータス | 備考 |
 |---------|----------|------|
-| gemini-1.5-flash | ✅ 動作可能 | テキスト生成のみ |
-| gemini-1.5-pro | ✅ 動作可能 | テキスト生成のみ |
-| gemini-2.0-flash-exp | ❌ 404エラー | 存在しない |
-| gemini-3-pro-image-preview | ❌ 404エラー | 存在しない |
+| gemini-3.0 | ✅ 動作可能 | 最新版・画像生成対応 |
+| gemini-1.5-flash | ❌ 廃止 | 古いバージョン |
+| gemini-1.5-pro | ❌ 廃止 | 古いバージョン |
 
-### 2.3 重要な制限事項
-**⚠️ Gemini APIは画像を直接生成しない**
-- Geminiはテキスト生成AIである
-- 画像生成には別のサービス（Imagen, DALL-E等）が必要
-- 現在の実装は動作しない
+### 2.3 動作状況
+**✅ Gemini APIで画像生成可能**
+- Geminiで画像生成は実装済み・動作確認済み
+- 4つのAPIキーで並列処理により高速化
+- 1記事あたり4-5枚を効率的に生成
 
 ## 3. 実装仕様
 
@@ -112,21 +112,32 @@ python3 simple_image_generator.py
 
 ## 5. 現在の仕様と制限事項
 
-### 5.1 APIの制限
-**Gemini APIは画像生成機能を持たない**
-- Geminiはテキスト生成専用AI
-- 画像生成には別のAPIが必要
+### 5.1 API動作仕様（2026-02-05 更新）
+**✅ Gemini 3で画像生成可能**
+- 4つのAPIキーによる並列処理で高速化
+- 1バッチ最大8枚の制限あり
+- Base64形式で画像データ返却
 
-### 5.2 暫定対策
-1. **simple_image_generator.py**を使用
-   - Pillowライブラリでプレースホルダー画像生成
-   - テキストとグラデーション背景
-   - 即座に動作可能
+### 5.2 タイムアウト対策
+1. **バッチ分割システム**実装済み
+   - 8枚を超える場合は自動分割
+   - バッチ間で3秒待機
+   - ThreadPoolExecutorによる並列処理
 
-### 5.3 恒久対策（要実装）
-1. **Imagen API**の導入
-2. **DALL-E API**の導入
-3. **Stable Diffusion API**の導入
+### 5.3 バッチ処理仕様（2026-02-05 実装完了）
+**8枚上限＆自動分割システム**
+- 1バッチ最大8枚まで処理
+- 9枚以上の場合は自動的にバッチ分割
+- バッチ間で3秒待機してタイムアウト回避
+- 全バッチ完了後に統計表示
+
+### 5.4 バッチ処理動作例
+```
+10枚生成の場合:
+バッチ1: 1-8枚目（8枚処理）
+⏳ 3秒待機
+バッチ2: 9-10枚目（2枚処理）
+```
 
 ## 6. 依存関係と前提条件
 
@@ -197,12 +208,12 @@ python3 simple_image_generator.py
 
 ## 10. 緊急連絡
 
-**現在の状態: 🔴 画像生成API未対応**
+**現在の状態: ✅ Gemini 3 で画像生成対応済み**
 
 **推奨アクション:**
-1. simple_image_generator.pyでプレースホルダー生成
-2. 画像生成APIの契約・導入を検討
-3. この仕様書を基に正しい実装を行う
+1. gemini3_image_generator.py を使用（4並列処理）
+2. 8枚を超える記事はバッチ分割で自動処理
+3. この仕様書を基にエージェント連携を実装
 
 ---
 
