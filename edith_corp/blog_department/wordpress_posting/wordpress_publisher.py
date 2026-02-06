@@ -228,17 +228,19 @@ class WordPressPublisher:
             return self._mock_post_creation(meta_data, content, featured_image_id)
 
         try:
+            # 認証ユーザーのIDを取得
+            author_id = self._get_current_user_id()
+
             # 投稿データ構築
             post_data = {
                 "title": meta_data.get("title", ""),
                 "content": content,
                 "status": "draft",  # デフォルトは下書き
-                "author": 1,  # 適切な作成者IDを設定
-                "meta": {
-                    "seo_description": meta_data.get("seo", {}).get("meta_description", ""),
-                    "primary_keywords": meta_data.get("seo", {}).get("primary_keywords", [])
-                }
             }
+
+            # 認証ユーザーIDが取得できた場合のみ author を指定
+            if author_id:
+                post_data["author"] = author_id
 
             # アイキャッチ画像設定
             if featured_image_id:
@@ -275,9 +277,17 @@ class WordPressPublisher:
                     }
                 }
             else:
+                # APIレスポンスボディからエラー詳細を取得
+                try:
+                    error_body = response.json()
+                    error_detail = error_body.get("message", response.text[:500])
+                    error_code = error_body.get("code", "unknown")
+                except Exception:
+                    error_detail = response.text[:500]
+                    error_code = "unknown"
                 return {
                     "success": False,
-                    "error": f"投稿失敗: {response.status_code}"
+                    "error": f"投稿失敗: {response.status_code} ({error_code}: {error_detail})"
                 }
 
         except Exception as e:
@@ -326,6 +336,26 @@ class WordPressPublisher:
         import hashlib
         tag_hash = int(hashlib.md5(tag_name.encode()).hexdigest()[:6], 16)
         return tag_hash % 1000 + 100  # 100-1099の範囲
+
+    def _get_current_user_id(self) -> Optional[int]:
+        """認証中ユーザーのWordPress IDを取得"""
+
+        try:
+            response = requests.get(
+                f"{self.wp_api_base}/users/me",
+                headers={'Authorization': self._get_auth_header()},
+                timeout=10
+            )
+            if response.status_code == 200:
+                user_id = response.json().get("id")
+                print(f"[WordPress投稿足軽] 認証ユーザーID: {user_id}")
+                return user_id
+            else:
+                print(f"[WordPress投稿足軽] ユーザーID取得失敗: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"[WordPress投稿足軽] ユーザーID取得エラー: {e}")
+            return None
 
     def _get_auth_header(self) -> str:
         """WordPress認証ヘッダー生成"""

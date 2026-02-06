@@ -90,14 +90,14 @@ class Gemini3ImageGenerator:
 
         return keywords[:max_keywords]
 
-    def generate_image_filename(self, section_data: Dict) -> str:
-        """画像ファイル名を生成（プレフィックスなし）"""
+    def generate_image_filename(self, section_data: Dict, index: int = 0) -> str:
+        """画像ファイル名を生成（インデックス付きで衝突防止）"""
 
         content = f"{section_data.get('title', '')} {section_data.get('content', '')}"
         keywords = self.extract_keywords_from_content(content)
 
-        # プレフィックスなしでファイル名生成
-        filename = '_'.join(keywords) + '.png'
+        # インデックスをプレフィックスに付けて衝突を防止
+        filename = f"{index:02d}_{'_'.join(keywords)}.png"
 
         return filename
 
@@ -313,7 +313,7 @@ class Gemini3ImageGenerator:
                 'title': 'アイキャッチ',
                 'content': f"{article_data['title']} - {article_data['theme']}"
             }
-            filename = self.generate_image_filename(section_data)
+            filename = self.generate_image_filename(section_data, index=0)
             all_tasks.append({
                 'title': 'アイキャッチ',
                 'content': article_data['theme'],
@@ -324,7 +324,7 @@ class Gemini3ImageGenerator:
 
         # セクション画像
         for i, section in enumerate(article_data.get('sections', [])):
-            filename = self.generate_image_filename(section)
+            filename = self.generate_image_filename(section, index=i + 1)
             prompt = self._create_image_prompt(section['title'], section['content'])
             all_tasks.append({
                 'title': section['title'],
