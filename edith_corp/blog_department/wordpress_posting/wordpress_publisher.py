@@ -8,6 +8,7 @@ import os
 import json
 import requests
 import base64
+import markdown
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -18,6 +19,18 @@ _project_root = Path(__file__).resolve().parent.parent.parent.parent
 _env_path = _project_root / '.env.local'
 if _env_path.exists():
     load_dotenv(str(_env_path))
+
+# 固定カテゴリーリスト（WordPressに存在するカテゴリー名）
+ALLOWED_CATEGORIES = [
+    "AIラボ",
+    "Webラボ",
+    "コワーキングスペース",
+    "マーケティング・SEO",
+    "働き方・生産性",
+    "財務・会計",
+    "起業・個人事業主",
+]
+
 
 class WordPressPublisher:
     """WordPress投稿足軽 - 記事と画像の一括投稿"""
@@ -34,6 +47,10 @@ class WordPressPublisher:
 
         # API エンドポイント
         self.wp_api_base = f"{self.wp_site_url}/wp-json/wp/v2"
+
+        # カテゴリーIDキャッシュ
+        self._category_cache = {}
+        self._tag_cache = {}
 
         print(f"[WordPress投稿足軽] 配属完了 - {self.specialty}を担当")
 
@@ -53,19 +70,23 @@ class WordPressPublisher:
 
         meta_data = meta_result["data"]
 
-        # 記事コンテンツ読み込み
+        # 記事コンテンツ読み込み（Markdown → HTML変換）
         content_result = self._load_article_content(article_dir)
         if not content_result["success"]:
             return content_result
 
-        article_content = content_result["content"]
+        article_html = content_result["content"]
 
         # 画像アップロード
         images_result = self._upload_images(article_dir)
 
+        # アップロードした画像を記事HTML内に挿入
+        if images_result.get("images"):
+            article_html = self._insert_images_into_content(article_html, images_result["images"])
+
         # 記事投稿
         post_result = self._create_wordpress_post(
-            meta_data, article_content, images_result.get("featured_image_id")
+            meta_data, article_html, images_result.get("featured_image_id")
         )
 
         if post_result["success"]:
@@ -104,7 +125,7 @@ class WordPressPublisher:
             return {"success": False, "error": f"メタデータ読み込みエラー: {str(e)}"}
 
     def _load_article_content(self, article_dir: str) -> Dict[str, Any]:
-        """記事コンテンツ読み込み"""
+        """記事コンテンツ読み込み（Markdown → HTML変換）"""
 
         article_path = os.path.join(article_dir, "article.md")
 
@@ -113,9 +134,20 @@ class WordPressPublisher:
 
         try:
             with open(article_path, "r", encoding="utf-8") as f:
-                content = f.read()
+                md_content = f.read()
 
-            return {"success": True, "content": content}
+            # 先頭のH1タイトル行を除去（WordPressはtitleフィールドで管理するため）
+            lines = md_content.split('\n')
+            if lines and lines[0].startswith('# '):
+                md_content = '\n'.join(lines[1:]).lstrip('\n')
+
+            # Markdown → HTML変換
+            html_content = markdown.markdown(
+                md_content,
+                extensions=['extra', 'nl2br', 'sane_lists']
+            )
+
+            return {"success": True, "content": html_content}
 
         except Exception as e:
             return {"success": False, "error": f"記事コンテンツ読み込みエラー: {str(e)}"}
@@ -132,27 +164,32 @@ class WordPressPublisher:
         uploaded_images = []
         featured_image_id = None
 
-        # 画像ファイルを検索してアップロード
-        for image_file in os.listdir(images_dir):
-            if image_file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                image_path = os.path.join(images_dir, image_file)
+        # 画像ファイルをソートして処理（00_が先頭=アイキャッチ）
+        image_files = sorted([
+            f for f in os.listdir(images_dir)
+            if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+        ])
 
-                upload_result = self._upload_single_image(image_path, image_file)
+        for idx, image_file in enumerate(image_files):
+            image_path = os.path.join(images_dir, image_file)
 
-                if upload_result["success"]:
-                    uploaded_images.append({
-                        "filename": image_file,
-                        "media_id": upload_result["media_id"],
-                        "url": upload_result["url"]
-                    })
+            upload_result = self._upload_single_image(image_path, image_file)
 
-                    # アイキャッチ画像の特定
-                    if "featured" in image_file.lower():
-                        featured_image_id = upload_result["media_id"]
+            if upload_result["success"]:
+                uploaded_images.append({
+                    "filename": image_file,
+                    "media_id": upload_result["media_id"],
+                    "url": upload_result["url"]
+                })
 
-                    print(f"[WordPress投稿足軽] 画像アップロード成功: {image_file}")
-                else:
-                    print(f"[WordPress投稿足軽] 画像アップロード失敗: {image_file}")
+                # インデックス0の画像をアイキャッチとして使用
+                if idx == 0:
+                    featured_image_id = upload_result["media_id"]
+                    print(f"[WordPress投稿足軽] アイキャッチ画像: {image_file}")
+
+                print(f"[WordPress投稿足軽] 画像アップロード成功: {image_file}")
+            else:
+                print(f"[WordPress投稿足軽] 画像アップロード失敗: {image_file}")
 
         return {
             "uploaded_count": len(uploaded_images),
@@ -160,23 +197,50 @@ class WordPressPublisher:
             "featured_image_id": featured_image_id
         }
 
+    def _insert_images_into_content(self, html_content: str, uploaded_images: List[Dict]) -> str:
+        """アップロードした画像を記事のH2見出しの直後に挿入する"""
+
+        # アイキャッチ（index 0）は除外、セクション画像（index 1以降）を挿入
+        section_images = uploaded_images[1:] if len(uploaded_images) > 1 else []
+
+        if not section_images:
+            return html_content
+
+        # H2タグを見つけて、各H2の直後に対応する画像を挿入
+        import re
+        h2_pattern = re.compile(r'(<h2>.*?</h2>)', re.DOTALL)
+        h2_matches = list(h2_pattern.finditer(html_content))
+
+        # 後ろから挿入（インデックスがずれないように）
+        for i in range(min(len(h2_matches), len(section_images)) - 1, -1, -1):
+            match = h2_matches[i]
+            img = section_images[i]
+            img_tag = f'\n<figure class="wp-block-image"><img src="{img["url"]}" alt="{img["filename"]}"/></figure>\n'
+            insert_pos = match.end()
+            html_content = html_content[:insert_pos] + img_tag + html_content[insert_pos:]
+
+        return html_content
+
     def _upload_single_image(self, image_path: str, filename: str) -> Dict[str, Any]:
         """単一画像のアップロード"""
 
         if not self.wp_username or not self.wp_app_password:
-            # 認証情報がない場合はモック実装
             return self._mock_image_upload(image_path, filename)
 
         try:
-            # ファイル読み込み
             with open(image_path, 'rb') as f:
                 image_data = f.read()
 
-            # WordPress REST API メディアアップロード
+            # MIMEタイプの判定
+            if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            else:
+                content_type = 'image/png'
+
             headers = {
                 'Authorization': self._get_auth_header(),
                 'Content-Disposition': f'attachment; filename="{filename}"',
-                'Content-Type': 'image/png'  # 適切なMIMEタイプを設定
+                'Content-Type': content_type
             }
 
             response = requests.post(
@@ -207,7 +271,6 @@ class WordPressPublisher:
     def _mock_image_upload(self, image_path: str, filename: str) -> Dict[str, Any]:
         """モック画像アップロード（開発用）"""
 
-        # 開発時のモック実装
         import random
         mock_media_id = random.randint(1000, 9999)
         mock_url = f"https://www.room8.co.jp/wp-content/uploads/2026/02/{filename}"
@@ -224,41 +287,44 @@ class WordPressPublisher:
         """WordPress記事投稿"""
 
         if not self.wp_username or not self.wp_app_password:
-            # 認証情報がない場合はモック実装
             return self._mock_post_creation(meta_data, content, featured_image_id)
 
         try:
-            # 認証ユーザーのIDを取得
             author_id = self._get_current_user_id()
 
-            # 投稿データ構築
             post_data = {
                 "title": meta_data.get("title", ""),
                 "content": content,
-                "status": "draft",  # デフォルトは下書き
+                "status": "draft",
             }
 
-            # 認証ユーザーIDが取得できた場合のみ author を指定
             if author_id:
                 post_data["author"] = author_id
 
-            # アイキャッチ画像設定
             if featured_image_id:
                 post_data["featured_media"] = featured_image_id
 
-            # カテゴリー設定
-            category = meta_data.get("category", "AI活用")
+            # カテゴリー設定（固定リストから選択）
+            category = meta_data.get("category", "AIラボ")
+            if category not in ALLOWED_CATEGORIES:
+                category = "AIラボ"
             category_id = self._get_or_create_category(category)
             if category_id:
                 post_data["categories"] = [category_id]
 
-            # タグ設定
+            # タグ設定（meta.jsonのtagsから）
             tags = meta_data.get("tags", [])
             if tags:
                 tag_ids = [self._get_or_create_tag(tag) for tag in tags]
-                post_data["tags"] = [tag_id for tag_id in tag_ids if tag_id]
+                post_data["tags"] = [tid for tid in tag_ids if tid]
 
-            # 投稿実行
+            # SEOメタディスクリプション（Yoast SEO対応）
+            seo_meta = meta_data.get("seo", {})
+            if seo_meta.get("meta_description"):
+                post_data["meta"] = {
+                    "_yoast_wpseo_metadesc": seo_meta["meta_description"]
+                }
+
             response = requests.post(
                 f"{self.wp_api_base}/posts",
                 headers={'Authorization': self._get_auth_header()},
@@ -277,7 +343,6 @@ class WordPressPublisher:
                     }
                 }
             else:
-                # APIレスポンスボディからエラー詳細を取得
                 try:
                     error_body = response.json()
                     error_detail = error_body.get("message", response.text[:500])
@@ -318,24 +383,93 @@ class WordPressPublisher:
         }
 
     def _get_or_create_category(self, category_name: str) -> Optional[int]:
-        """カテゴリー取得または作成"""
+        """カテゴリーIDをWordPress APIから取得（なければ作成）"""
 
-        # モック実装
-        category_map = {
-            "AI活用": 1,
-            "デジタル化": 2,
-            "業務効率": 3
-        }
+        if category_name in self._category_cache:
+            return self._category_cache[category_name]
 
-        return category_map.get(category_name, 1)  # デフォルトはAI活用
+        if not self.wp_username or not self.wp_app_password:
+            return 1
+
+        try:
+            # 既存カテゴリーを検索
+            response = requests.get(
+                f"{self.wp_api_base}/categories",
+                headers={'Authorization': self._get_auth_header()},
+                params={"search": category_name, "per_page": 10},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                categories = response.json()
+                for cat in categories:
+                    if cat["name"] == category_name:
+                        self._category_cache[category_name] = cat["id"]
+                        print(f"[WordPress投稿足軽] カテゴリー取得: {category_name} (ID: {cat['id']})")
+                        return cat["id"]
+
+            # 見つからなければ作成
+            response = requests.post(
+                f"{self.wp_api_base}/categories",
+                headers={'Authorization': self._get_auth_header()},
+                json={"name": category_name},
+                timeout=10
+            )
+
+            if response.status_code == 201:
+                cat_id = response.json()["id"]
+                self._category_cache[category_name] = cat_id
+                print(f"[WordPress投稿足軽] カテゴリー作成: {category_name} (ID: {cat_id})")
+                return cat_id
+
+        except Exception as e:
+            print(f"[WordPress投稿足軽] カテゴリー処理エラー: {e}")
+
+        return None
 
     def _get_or_create_tag(self, tag_name: str) -> Optional[int]:
-        """タグ取得または作成"""
+        """タグIDをWordPress APIから取得（なければ作成）"""
 
-        # モック実装
-        import hashlib
-        tag_hash = int(hashlib.md5(tag_name.encode()).hexdigest()[:6], 16)
-        return tag_hash % 1000 + 100  # 100-1099の範囲
+        if tag_name in self._tag_cache:
+            return self._tag_cache[tag_name]
+
+        if not self.wp_username or not self.wp_app_password:
+            return None
+
+        try:
+            # 既存タグを検索
+            response = requests.get(
+                f"{self.wp_api_base}/tags",
+                headers={'Authorization': self._get_auth_header()},
+                params={"search": tag_name, "per_page": 10},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                tags = response.json()
+                for tag in tags:
+                    if tag["name"] == tag_name:
+                        self._tag_cache[tag_name] = tag["id"]
+                        return tag["id"]
+
+            # 見つからなければ作成
+            response = requests.post(
+                f"{self.wp_api_base}/tags",
+                headers={'Authorization': self._get_auth_header()},
+                json={"name": tag_name},
+                timeout=10
+            )
+
+            if response.status_code == 201:
+                tag_id = response.json()["id"]
+                self._tag_cache[tag_name] = tag_id
+                print(f"[WordPress投稿足軽] タグ作成: {tag_name} (ID: {tag_id})")
+                return tag_id
+
+        except Exception as e:
+            print(f"[WordPress投稿足軽] タグ処理エラー: {e}")
+
+        return None
 
     def _get_current_user_id(self) -> Optional[int]:
         """認証中ユーザーのWordPress IDを取得"""
@@ -370,7 +504,6 @@ class WordPressPublisher:
         wordpress_dir = os.path.join(article_dir, "wordpress")
         os.makedirs(wordpress_dir, exist_ok=True)
 
-        # 投稿データ保存
         publish_data = {
             "post_id": post_data.get("id"),
             "post_url": post_data.get("url"),
@@ -398,14 +531,12 @@ class ArticlePublishingWorkflow:
 
         print(f"[記事投稿ワークフロー] 📁 処理開始: {article_dir}")
 
-        # 1. ディレクトリ存在確認
         if not os.path.exists(article_dir):
             return {
                 "success": False,
                 "error": f"記事ディレクトリが存在しません: {article_dir}"
             }
 
-        # 2. 必要ファイル確認
         required_files = ["article.md", "meta.json"]
         missing_files = []
 
@@ -420,10 +551,8 @@ class ArticlePublishingWorkflow:
                 "error": f"必要ファイルが不足: {', '.join(missing_files)}"
             }
 
-        # 3. WordPress投稿実行
         publish_result = self.publisher.publish_article_with_images(article_dir)
 
-        # 4. 結果統合
         workflow_result = {
             "workflow_success": publish_result["post_success"],
             "article_directory": article_dir,
@@ -440,44 +569,3 @@ class ArticlePublishingWorkflow:
         print(f"[記事投稿ワークフロー] {status}")
 
         return workflow_result
-
-
-def test_wordpress_publishing():
-    """WordPress投稿システムのテスト"""
-
-    print("🚀 WordPress投稿システムテスト")
-    print("=" * 60)
-
-    workflow = ArticlePublishingWorkflow()
-
-    # テスト記事ディレクトリパスを探索
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-    from output_paths import BLOG_ARTICLES_DIR
-    articles_base = str(BLOG_ARTICLES_DIR)
-    if os.path.exists(articles_base):
-        # 最新の記事ディレクトリを使用
-        article_dirs = [d for d in os.listdir(articles_base) if os.path.isdir(os.path.join(articles_base, d))]
-        if article_dirs:
-            latest_article = sorted(article_dirs)[-1]
-            test_article_dir = os.path.join(articles_base, latest_article)
-
-            print(f"[テスト] 使用記事ディレクトリ: {test_article_dir}")
-
-            # ワークフロー実行
-            result = workflow.process_article_directory(test_article_dir, "draft")
-
-            print(f"\n📊 処理結果:")
-            print(f"  成功: {'✅' if result['workflow_success'] else '❌'}")
-            print(f"  WordPress投稿ID: {result['wordpress_post'].get('id', 'N/A')}")
-            print(f"  画像処理数: {result['images_processed']}枚")
-            print(f"  投稿URL: {result['wordpress_post'].get('url', 'N/A')}")
-
-        else:
-            print("[テスト] 記事ディレクトリが見つかりません")
-    else:
-        print("[テスト] articlesディレクトリが存在しません")
-
-
-if __name__ == "__main__":
-    test_wordpress_publishing()
