@@ -6,20 +6,30 @@ Search Console実データに基づく戦略立案
 """
 
 import json
+import re
 import sys
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any
 
+_THIS_DIR = Path(__file__).resolve().parent
+_BLOG_DIR = _THIS_DIR.parent
+
+sys.path.insert(0, str(_BLOG_DIR.parent))
+from output_paths import BLOG_ARTICLES_DIR, BLOG_ARTICLES_INDEX
+
+_ARTICLES_DIR = BLOG_ARTICLES_DIR
+
 # Search Console API追加
-sys.path.append('../search_console')
+sys.path.insert(0, str(_BLOG_DIR / "search_console"))
 try:
     from search_console_api import SearchConsoleIntegration
 except ImportError:
     SearchConsoleIntegration = None
 
 # 戦略記憶システム追加
-sys.path.append('../../strategic_memory')
+sys.path.insert(0, str(_BLOG_DIR.parent / "strategic_memory"))
 try:
     from strategic_memory import MemoryIntegration
 except ImportError:
@@ -225,100 +235,299 @@ class SEOSpecialistAshigaru:
             {"keyword": f"{topic} 解決策", "volume": "推定", "difficulty": "中"}
         ]
 
+    # ── マークダウン解析 ──
+
+    def _parse_markdown(self, raw_content: str) -> Dict[str, Any]:
+        """マークダウンを解析して構造データを返す"""
+        lines = raw_content.split('\n')
+        title = ""
+        headings = []
+        paragraphs = []
+        current_para = []
+
+        for line in lines:
+            stripped = line.strip()
+            # H1 タイトル（最初の1つだけ）
+            if stripped.startswith('# ') and not stripped.startswith('## ') and not title:
+                title = stripped[2:].strip().strip('*')
+            # H2
+            elif stripped.startswith('## '):
+                if current_para:
+                    paragraphs.append(' '.join(current_para))
+                    current_para = []
+                headings.append({"level": "h2", "text": stripped.lstrip('#').strip()})
+            # H3
+            elif stripped.startswith('### '):
+                if current_para:
+                    paragraphs.append(' '.join(current_para))
+                    current_para = []
+                headings.append({"level": "h3", "text": stripped.lstrip('#').strip()})
+            # 通常テキスト行（空行・区切り・画像を除く）
+            elif stripped and not stripped.startswith('---') and not stripped.startswith('!['):
+                # Bold / italic 等のマークダウン記法を除去してプレーンテキストに
+                plain = re.sub(r'\*{1,2}(.+?)\*{1,2}', r'\1', stripped)
+                current_para.append(plain)
+            elif not stripped and current_para:
+                paragraphs.append(' '.join(current_para))
+                current_para = []
+
+        if current_para:
+            paragraphs.append(' '.join(current_para))
+
+        return {
+            "title": title,
+            "headings": headings,
+            "paragraphs": paragraphs,
+            "first_paragraph": paragraphs[0] if paragraphs else "",
+            "char_count": len(raw_content),
+        }
+
+    def _analyze_keyword_presence(self, raw_content: str, keyword_data: Dict) -> Dict[str, Any]:
+        """コンテンツ内のキーワード出現状況を分析"""
+        content_lower = raw_content.lower()
+        results = []
+
+        for kw in keyword_data.get("primary_keywords", []):
+            keyword = kw.get("keyword", "")
+            if not keyword:
+                continue
+            count = content_lower.count(keyword.lower())
+            density = round(count * len(keyword) / max(len(raw_content), 1) * 100, 2)
+            results.append({
+                "keyword": keyword,
+                "count": count,
+                "density_pct": density,
+                "present": count > 0,
+            })
+
+        return {
+            "keyword_occurrences": results,
+            "missing_keywords": [r["keyword"] for r in results if not r["present"]],
+        }
+
+    # ── コンテンツ構造最適化 ──
+
     def optimize_content_structure(self, raw_content: str, keyword_data: Dict) -> Dict[str, Any]:
-        """コンテンツ構造の最適化"""
+        """コンテンツ構造の最適化 — 実コンテンツを解析して改善提案を返す"""
 
         print(f"[SEO足軽] コンテンツSEO最適化開始...")
 
-        # 実際の実装では、Task Toolでコンテンツ最適化を実行
+        parsed = self._parse_markdown(raw_content)
+        keyword_stats = self._analyze_keyword_presence(raw_content, keyword_data)
+
         optimized_content = {
-            "title": self._optimize_title(keyword_data),
-            "meta_description": self._generate_meta_description(keyword_data),
-            "heading_structure": self._optimize_headings(keyword_data),
-            "internal_links": self._suggest_internal_links(),
-            "featured_snippet_optimization": self._optimize_for_snippets(keyword_data),
-            "content_length": "2500-3000字（競合分析に基づく最適長）",
-            "keyword_density": "主要キーワード1.5%、関連キーワード0.8%"
+            "title": self._optimize_title(parsed, keyword_data),
+            "meta_description": self._generate_meta_description(parsed, keyword_data),
+            "heading_structure": self._optimize_headings(parsed, keyword_data),
+            "internal_links": self._suggest_internal_links(parsed),
+            "featured_snippet_optimization": self._optimize_for_snippets(parsed, keyword_data),
+            "content_stats": {
+                "char_count": parsed["char_count"],
+                "heading_count": len(parsed["headings"]),
+                "h2_count": sum(1 for h in parsed["headings"] if h["level"] == "h2"),
+                "h3_count": sum(1 for h in parsed["headings"] if h["level"] == "h3"),
+                "paragraph_count": len(parsed["paragraphs"]),
+            },
+            "keyword_presence": keyword_stats,
         }
 
         print(f"[SEO足軽] ✅ SEO最適化完了")
+        print(f"[SEO足軽] 文字数: {parsed['char_count']}字 / 見出し: {len(parsed['headings'])}個")
         print(f"[SEO足軽] 最適化要素: {len(optimized_content)}項目")
 
         return optimized_content
 
-    def _optimize_title(self, keyword_data: Dict) -> Dict[str, str]:
-        """タイトル最適化"""
+    def _optimize_title(self, parsed: Dict, keyword_data: Dict) -> Dict[str, Any]:
+        """実タイトルを分析して最適化提案"""
+        actual_title = parsed.get("title", "")
+        title_len = len(actual_title)
 
-        primary_keyword = keyword_data["primary_keywords"][0]["keyword"]
+        # 主要キーワードがタイトルに含まれているか
+        primary_keywords = keyword_data.get("primary_keywords", [])
+        keywords_in_title = []
+        keywords_missing = []
+        for kw in primary_keywords:
+            keyword = kw.get("keyword", "")
+            if keyword and keyword.lower() in actual_title.lower():
+                keywords_in_title.append(keyword)
+            elif keyword:
+                keywords_missing.append(keyword)
+
+        issues = []
+        if title_len > 60:
+            issues.append(f"タイトルが{title_len}文字で長すぎる（推奨: 30-60文字）。検索結果で切れる可能性あり")
+        elif title_len < 15:
+            issues.append(f"タイトルが{title_len}文字で短すぎる（推奨: 30-60文字）")
+        if keywords_missing and primary_keywords:
+            issues.append(f"主要キーワード未含有: {', '.join(keywords_missing[:3])}")
 
         return {
-            "seo_title": f"{primary_keyword}の実態｜成田悠輔風に辛辣解説",
-            "display_title": f"『{primary_keyword}』で大コケした中小企業の現実を辛辣分析",
-            "title_length": "32文字（検索結果での切れ目を考慮）",
-            "emotional_trigger": "現実・辛辣・大コケ"
+            "actual_title": actual_title,
+            "title_length": title_len,
+            "keywords_included": keywords_in_title,
+            "keywords_missing": keywords_missing,
+            "issues": issues,
+            "score": "good" if not issues else "needs_improvement",
         }
 
-    def _generate_meta_description(self, keyword_data: Dict) -> str:
-        """メタディスクリプション生成"""
+    def _generate_meta_description(self, parsed: Dict, keyword_data: Dict) -> Dict[str, Any]:
+        """実コンテンツからメタディスクリプション候補を生成"""
+        first_para = parsed.get("first_paragraph", "")
+        title = parsed.get("title", "")
 
-        primary_kw = keyword_data["primary_keywords"][0]["keyword"]
-        return f"{primary_kw}の典型的失敗パターンを成田悠輔風に辛辣分析。中小企業が陥る5つの罠と、本当に効果的な導入手順を具体例付きで解説。読んでクスっと笑えて、でも実用的。"
+        # 最初の段落を120文字に切り詰め
+        if len(first_para) > 120:
+            desc_base = first_para[:117] + "..."
+        else:
+            desc_base = first_para
 
-    def _optimize_headings(self, keyword_data: Dict) -> List[Dict]:
-        """見出し構造最適化"""
+        # 主要キーワードの1つ目を抽出
+        primary_kw = ""
+        for kw in keyword_data.get("primary_keywords", []):
+            if kw.get("keyword"):
+                primary_kw = kw["keyword"]
+                break
 
-        return [
-            {"level": "h2", "text": "なぜ中小企業のAI導入は失敗するのか？", "keywords": ["AI導入", "失敗"]},
-            {"level": "h3", "text": "失敗パターン1: 基礎業務を放置してAI導入", "keywords": ["失敗パターン"]},
-            {"level": "h3", "text": "失敗パターン2: ROI計算なしの感情的導入", "keywords": ["ROI"]},
-            {"level": "h2", "text": "正しいAI導入の3つのステップ", "keywords": ["正しい", "ステップ"]},
-            {"level": "h3", "text": "ステップ1: 既存業務のデジタル化完了", "keywords": ["デジタル化"]},
-            {"level": "h2", "text": "成功事例: 月額5万円でMAU30%増を実現した事例", "keywords": ["成功事例"]}
-        ]
-
-    def _suggest_internal_links(self) -> List[Dict]:
-        """内部リンク提案"""
-
-        return [
-            {
-                "anchor_text": "起業家のためのAI活用基礎",
-                "target_url": "/ai-basics-for-entrepreneurs",
-                "placement": "導入セクション"
-            },
-            {
-                "anchor_text": "ChatGPT活用の具体的ROI計算方法",
-                "target_url": "/chatgpt-roi-calculation",
-                "placement": "ROI説明セクション"
-            },
-            {
-                "anchor_text": "中小企業のデジタル化チェックリスト",
-                "target_url": "/digitalization-checklist",
-                "placement": "改善手順セクション"
-            }
-        ]
-
-    def _optimize_for_snippets(self, keyword_data: Dict) -> Dict:
-        """強調スニペット対策"""
+        # キーワードがdescに含まれるかチェック
+        kw_in_desc = primary_kw.lower() in desc_base.lower() if primary_kw else True
 
         return {
-            "qa_format": {
-                "question": "中小企業のAI導入が失敗する主な理由は？",
-                "answer": "1. 基礎業務のデジタル化未完了 2. ROI計算の欠如 3. 段階的導入計画の不在"
-            },
-            "list_format": [
-                "基礎業務のデジタル化完了",
-                "ROI目標の明確化",
-                "段階的導入計画の策定",
-                "効果測定システムの構築"
-            ],
-            "table_data": {
-                "columns": ["導入段階", "期間", "コスト", "期待効果"],
-                "rows": [
-                    ["基礎デジタル化", "1-2ヶ月", "月5万円", "業務効率20%向上"],
-                    ["AI試験導入", "1ヶ月", "月3万円", "特定業務50%効率化"],
-                    ["本格運用", "継続", "月8万円", "全体業務30%効率化"]
-                ]
-            }
+            "suggested_description": desc_base,
+            "description_length": len(desc_base),
+            "primary_keyword_included": kw_in_desc,
+            "recommendation": "メタディスクリプションは120-160文字が最適。主要キーワードを自然に含める。",
+        }
+
+    def _optimize_headings(self, parsed: Dict, keyword_data: Dict) -> Dict[str, Any]:
+        """実見出し構造を分析してSEO提案"""
+        headings = parsed.get("headings", [])
+
+        primary_keywords = [kw.get("keyword", "").lower()
+                            for kw in keyword_data.get("primary_keywords", []) if kw.get("keyword")]
+
+        analyzed = []
+        for h in headings:
+            text_lower = h["text"].lower()
+            kw_match = [kw for kw in primary_keywords if kw in text_lower]
+            analyzed.append({
+                "level": h["level"],
+                "text": h["text"],
+                "keywords_found": kw_match,
+                "has_keyword": len(kw_match) > 0,
+            })
+
+        h2_count = sum(1 for h in headings if h["level"] == "h2")
+        h3_count = sum(1 for h in headings if h["level"] == "h3")
+        headings_with_kw = sum(1 for a in analyzed if a["has_keyword"])
+
+        issues = []
+        if h2_count < 2:
+            issues.append("H2が少ない（推奨: 3-6個）。内容を適切にセクション分けするとSEO効果向上")
+        if h2_count > 0 and headings_with_kw == 0:
+            issues.append("どの見出しにも主要キーワードが含まれていない。H2に自然にキーワードを含めると良い")
+
+        return {
+            "actual_headings": analyzed,
+            "h2_count": h2_count,
+            "h3_count": h3_count,
+            "headings_with_keyword": headings_with_kw,
+            "issues": issues,
+        }
+
+    def _load_articles_index(self) -> List[Dict]:
+        """articles_index.json から全記事メタデータを読み込む"""
+        if BLOG_ARTICLES_INDEX.exists():
+            try:
+                data = json.loads(BLOG_ARTICLES_INDEX.read_text(encoding="utf-8"))
+                return data.get("articles", [])
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # フォールバック: ディレクトリスキャン（EDITH生成記事のみ）
+        results = []
+        if _ARTICLES_DIR.exists():
+            for meta_file in sorted(_ARTICLES_DIR.glob("*/meta.json")):
+                try:
+                    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                    results.append(meta)
+                except (json.JSONDecodeError, OSError):
+                    continue
+        return results
+
+    def _suggest_internal_links(self, parsed: Dict) -> List[Dict]:
+        """全記事（過去記事含む）から関連する内部リンクを提案"""
+        suggestions = []
+
+        all_articles = self._load_articles_index()
+        if not all_articles:
+            return suggestions
+
+        article_title = parsed.get("title", "").lower()
+        article_text = " ".join(parsed.get("paragraphs", [])).lower()
+
+        for entry in all_articles:
+            other_title = entry.get("title", "")
+            other_slug = entry.get("slug", "")
+
+            # 同じ記事はスキップ
+            if other_title.lower() == article_title:
+                continue
+
+            # タイトルのキーワードマッチでスコアリング
+            title_words = [w for w in other_title.lower().split() if len(w) >= 2]
+            match_score = sum(1 for w in title_words if w in article_text)
+
+            # タグがあればタグマッチも加算
+            other_tags = [t.lower() for t in entry.get("tags", [])]
+            tag_matches = [t for t in other_tags if t in article_text]
+            match_score += len(tag_matches)
+
+            if match_score > 0:
+                suggestions.append({
+                    "anchor_text": other_title,
+                    "target_slug": other_slug,
+                    "url": entry.get("url", f"https://www.room8.co.jp/{other_slug}/"),
+                    "relevance_score": match_score,
+                    "source": entry.get("source", "wordpress"),
+                })
+
+        # スコア順でソートして上位5件
+        suggestions.sort(key=lambda x: x["relevance_score"], reverse=True)
+        return suggestions[:5]
+
+    def _optimize_for_snippets(self, parsed: Dict, keyword_data: Dict) -> Dict[str, Any]:
+        """実コンテンツから強調スニペット候補を抽出"""
+        paragraphs = parsed.get("paragraphs", [])
+        headings = parsed.get("headings", [])
+
+        # 疑問文の見出しを探す（スニペットのQ&A候補）
+        qa_candidates = []
+        for i, h in enumerate(headings):
+            if '？' in h["text"] or '?' in h["text"]:
+                # 次の段落を回答候補とする
+                # 見出し位置は概算（段落インデックスと1:1ではないが近似）
+                qa_candidates.append({
+                    "question": h["text"],
+                    "heading_level": h["level"],
+                })
+
+        # リスト形式のコンテンツを探す（箇条書き・番号付き）
+        list_items = []
+        for p in paragraphs:
+            lines = p.split(' ')
+            for line in lines:
+                if re.match(r'^[\d１２３４５６７８９０]+[\.\)）]', line.strip()):
+                    list_items.append(line.strip())
+                elif line.strip().startswith('- ') or line.strip().startswith('・'):
+                    list_items.append(line.strip())
+
+        return {
+            "qa_candidates": qa_candidates[:5],
+            "list_content_found": len(list_items) > 0,
+            "list_items_count": len(list_items),
+            "recommendation": "疑問文H2の直後に簡潔な回答（2-3文）を配置すると強調スニペット獲得率が上がる"
+                              if qa_candidates else
+                              "H2に疑問文（〇〇とは？等）を1-2個入れると強調スニペット候補になる",
         }
 
     def execute_seo_optimization(self, article_data: Dict) -> Dict[str, Any]:

@@ -62,6 +62,16 @@ node_modules/
 *.png.tmp
 *.jpg.tmp
 
+# ==========================================
+# ブログコンテンツ（記事・画像）を除外
+# ==========================================
+# 生成された記事と画像
+edith_corp/blog_department/articles/
+# 下書き記事
+edith_corp/blog_department/drafts/
+# 生成画像のテストデータ
+edith_corp/blog_department/test_images/
+
 # WordPress投稿の一時データ
 **/wordpress/temp/
 

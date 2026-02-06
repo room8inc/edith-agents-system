@@ -15,6 +15,10 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from output_paths import BLOG_ARTICLES_DIR, ensure_dirs
+
 class Gemini3ImageGenerator:
     """Gemini 3を使用した並列画像生成（バッチ処理対応）"""
 
@@ -40,9 +44,9 @@ class Gemini3ImageGenerator:
 
         print(f"✅ {len(self.api_keys)}個のAPIキーで並列処理を実行")
 
-        # Gemini 3 エンドポイント（最新API）
-        # 参照: https://ai.google.dev/gemini-api/docs/gemini-3?hl=ja
-        self.image_endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0:generateContent"
+        # Gemini 3 Pro Image Preview エンドポイント（Nano Banana Pro）
+        # 参照: /Users/tsuruta/Documents/000AGENTS/gemini3-image-generation-spec.md
+        self.image_endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent"
 
     def extract_keywords_from_content(self, content: str, max_keywords: int = 3) -> List[str]:
         """コンテンツから重要キーワードを抽出（プレフィックスなし）"""
@@ -114,8 +118,11 @@ class Gemini3ImageGenerator:
         """
         return prompt
 
+    IMAGE_TIMEOUT = 60  # 画像生成APIタイムアウト（秒）
+    MAX_RETRIES = 1     # リトライ回数
+
     def _generate_single_image(self, task: Dict, api_key: str) -> Dict:
-        """単一画像を生成（APIキー指定）"""
+        """単一画像を生成（APIキー指定、リトライあり）"""
 
         headers = {
             'Content-Type': 'application/json',
@@ -128,61 +135,86 @@ class Gemini3ImageGenerator:
                 }]
             }],
             'generationConfig': {
-                'temperature': 0.4,
-                'topK': 32,
-                'topP': 1,
-                'maxOutputTokens': 4096,
+                'responseModalities': ['TEXT', 'IMAGE'],
+                'imageConfig': {
+                    'aspectRatio': '16:9',
+                    'imageSize': '2K'
+                }
             }
         }
 
         url = f"{self.image_endpoint}?key={api_key}"
 
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
+        for attempt in range(1 + self.MAX_RETRIES):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=self.IMAGE_TIMEOUT)
 
-            if response.status_code == 200:
-                result = response.json()
+                if response.status_code == 200:
+                    result = response.json()
 
-                # 画像データの取得（Base64）
-                if 'candidates' in result and len(result['candidates']) > 0:
-                    candidate = result['candidates'][0]
-                    if 'content' in candidate and 'parts' in candidate['content']:
-                        for part in candidate['content']['parts']:
-                            if 'inlineData' in part:
-                                image_data = part['inlineData']['data']
-                                mime_type = part['inlineData']['mimeType']
+                    # 画像データの取得（Base64）
+                    if 'candidates' in result and len(result['candidates']) > 0:
+                        candidate = result['candidates'][0]
+                        if 'content' in candidate and 'parts' in candidate['content']:
+                            for part in candidate['content']['parts']:
+                                if 'inlineData' in part:
+                                    image_data = part['inlineData']['data']
 
-                                # Base64デコードして保存
-                                image_bytes = base64.b64decode(image_data)
-                                with open(task['output_path'], 'wb') as f:
-                                    f.write(image_bytes)
+                                    # Base64デコードして保存
+                                    image_bytes = base64.b64decode(image_data)
+                                    with open(task['output_path'], 'wb') as f:
+                                        f.write(image_bytes)
 
-                                return {
-                                    'success': True,
-                                    'path': task['output_path'],
-                                    'title': task['title']
-                                }
+                                    return {
+                                        'success': True,
+                                        'path': task['output_path'],
+                                        'title': task['title']
+                                    }
 
-                # 画像データが見つからない場合
+                    # 画像データが見つからない場合
+                    return {
+                        'success': False,
+                        'error': 'No image data in response',
+                        'title': task['title']
+                    }
+
+                elif response.status_code in (429, 500, 503) and attempt < self.MAX_RETRIES:
+                    # レート制限 or サーバーエラー → リトライ
+                    wait = 5 * (attempt + 1)
+                    print(f"    ⏳ {response.status_code} エラー、{wait}秒後にリトライ...")
+                    time.sleep(wait)
+                    continue
+
+                else:
+                    error_detail = response.text if response.text else "No error detail"
+                    return {
+                        'success': False,
+                        'error': f'Status: {response.status_code} - {error_detail[:200]}',
+                        'title': task['title']
+                    }
+
+            except requests.exceptions.Timeout:
+                if attempt < self.MAX_RETRIES:
+                    print(f"    ⏳ タイムアウト、リトライ中...")
+                    continue
                 return {
                     'success': False,
-                    'error': 'No image data in response',
+                    'error': f'Timeout after {self.IMAGE_TIMEOUT}s (retries exhausted)',
                     'title': task['title']
                 }
 
-            else:
+            except Exception as e:
                 return {
                     'success': False,
-                    'error': f'Status: {response.status_code}',
+                    'error': str(e),
                     'title': task['title']
                 }
 
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'title': task['title']
-            }
+        return {
+            'success': False,
+            'error': 'Max retries exhausted',
+            'title': task['title']
+        }
 
     def _distribute_tasks(self, num_images: int) -> List[int]:
         """タスクをAPIキー間で分配"""
@@ -262,14 +294,13 @@ class Gemini3ImageGenerator:
         date_str = datetime.now().strftime('%Y%m%d')
         slug = article_data.get('slug', 'untitled')
 
-        # 記事と画像の統一保存先（相対パス）
-        from pathlib import Path as PathLib
-        blog_dept_dir = PathLib(__file__).parent.parent  # image_generation → blog_department
-        article_dir = blog_dept_dir / 'articles' / f"{date_str}_{slug}"
+        # 記事と画像の統一保存先
+        ensure_dirs()
+        article_dir = BLOG_ARTICLES_DIR / f"{date_str}_{slug}"
         images_dir = article_dir / 'images'
 
         # ディレクトリ作成
-        Path(images_dir).mkdir(parents=True, exist_ok=True)
+        images_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\n📁 保存先: {images_dir}")
 

@@ -4,13 +4,16 @@ Search Console API 設定ファイル
 """
 
 import os
+from pathlib import Path
+
+_THIS_DIR = Path(__file__).resolve().parent
 
 # Search Console設定
 SEARCH_CONSOLE_CONFIG = {
     # 認証情報ファイル（環境変数優先）
     "credentials_path": os.environ.get(
         'GOOGLE_CREDENTIALS_PATH',
-        'credentials/claude-agent-486408-2670454f8c9f.json'
+        str(_THIS_DIR / 'credentials' / 'claude-agent-486408-2670454f8c9f.json')
     ),
 
     # サイトURL（環境変数優先）

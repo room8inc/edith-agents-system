@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
 EDITH CEO（最高経営責任者） - 動的組織管理システム
-事業部の新設・評価・改革を動的に実行
+department_registry.json を読み、Task Tool でサブエージェントを起動するための
+ディスパッチ情報を提供する。実際のTask Tool呼び出しはClaude/EDITHが行う。
 """
 
-import os
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any, Optional
+
+_THIS_DIR = Path(__file__).resolve().parent
+
+from output_paths import REPORTS_DIR, ensure_dirs
+
 
 class EDITHCorporation:
     """EDITH Corporation - 動的組織管理CEO"""
@@ -15,7 +21,7 @@ class EDITHCorporation:
     def __init__(self):
         self.position = "CEO"
         self.name = "EDITH"
-        self.company_root = "/Users/tsuruta/Documents/000AGENTS/edith_corp"
+        self.company_root = str(_THIS_DIR)
         self.departments = {}
 
         self._initialize_organization()
@@ -24,7 +30,6 @@ class EDITHCorporation:
     def _initialize_organization(self):
         """組織初期化"""
 
-        # 事業部登録
         self.departments = {
             "blog_department": {
                 "name": "ブログ事業部",
@@ -55,14 +60,12 @@ class EDITHCorporation:
         print(f"事業部名: {dept_name}")
         print(f"専門分野: {specialization}")
 
-        # ディレクトリ構造作成
-        dept_path = f"{self.company_root}/{dept_name}"
-        os.makedirs(dept_path, exist_ok=True)
+        dept_path = Path(self.company_root) / dept_name
+        dept_path.mkdir(parents=True, exist_ok=True)
 
         for unit in ashigaru_list:
-            os.makedirs(f"{dept_path}/{unit}", exist_ok=True)
+            (dept_path / unit).mkdir(parents=True, exist_ok=True)
 
-        # 事業部情報登録
         self.departments[dept_name] = {
             "name": dept_name,
             "specialization": specialization,
@@ -90,17 +93,15 @@ class EDITHCorporation:
         print(f"前回スコア: {old_score} → 今回: {new_score}")
         print(f"フィードバック: {feedback}")
 
-        # 評価更新
         dept["performance"]["score"] = new_score
         dept["performance"]["last_feedback"] = feedback
         dept["performance"]["evaluated_at"] = datetime.now().isoformat()
 
-        # 改善指示
         if new_score < 70:
-            print(f"[{self.name} CEO] ⚠️ 改善必要。戦略見直しを指示")
+            print(f"[{self.name} CEO] 改善必要。戦略見直しを指示")
             return self._request_improvement_plan(dept_name)
         elif new_score > old_score + 10:
-            print(f"[{self.name} CEO] ✅ 優秀な成果。予算増額検討")
+            print(f"[{self.name} CEO] 優秀な成果。予算増額検討")
 
         return True
 
@@ -109,7 +110,6 @@ class EDITHCorporation:
 
         print(f"[{self.name} CEO] {dept_name} に改善計画提出を要求")
 
-        # 実際の実装では、該当事業部の家老Agentに改善計画作成を指示
         improvement_suggestions = [
             "足軽の専門性向上研修",
             "プロセス効率化の検討",
@@ -130,20 +130,18 @@ class EDITHCorporation:
         print(f"対象: {dept_name}/{unit_name}")
         print(f"理由: {reason}")
 
-        # 足軽大将の必要性判定
         dept = self.departments.get(dept_name)
         if not dept:
             return False
 
         ashigaru_count = len(dept["ashigaru_units"])
 
-        if ashigaru_count >= 4:  # 4名以上で大将配置検討
-            print(f"[{self.name} CEO] ✅ 足軽大将配置承認")
+        if ashigaru_count >= 4:
+            print(f"[{self.name} CEO] 足軽大将配置承認")
             print(f"[{self.name} CEO] {unit_name}足軽大将を任命")
 
-            # 足軽大将配置
-            taisho_dir = f"{self.company_root}/{dept_name}/{unit_name}_taisho"
-            os.makedirs(taisho_dir, exist_ok=True)
+            taisho_dir = Path(self.company_root) / dept_name / f"{unit_name}_taisho"
+            taisho_dir.mkdir(parents=True, exist_ok=True)
 
             dept[f"{unit_name}_taisho"] = {
                 "position": "足軽大将",
@@ -154,7 +152,7 @@ class EDITHCorporation:
 
             return True
         else:
-            print(f"[{self.name} CEO] ❌ 足軽数不足。現在{ashigaru_count}名")
+            print(f"[{self.name} CEO] 足軽数不足。現在{ashigaru_count}名")
             return False
 
     def get_organization_status(self):
@@ -165,7 +163,7 @@ class EDITHCorporation:
         print(f"{'='*60}")
 
         for dept_key, dept in self.departments.items():
-            print(f"\n📊 {dept['name']}")
+            print(f"\n{dept['name']}")
             print(f"   部長: {dept['karo']}")
             print(f"   足軽数: {len(dept['ashigaru_units'])}名")
             print(f"   成績: {dept['performance']['score']}点 ({dept['performance']['status']})")
@@ -173,48 +171,110 @@ class EDITHCorporation:
 
         return self.departments
 
+    def get_dispatch_info(self, mission_type: str = "daily_blog") -> Dict[str, Any]:
+        """ミッションタイプからディスパッチ情報を解決する。
+        Claude/EDITHがTask Toolで事業部長を起動するための情報を返す。
+        実際のTask Tool呼び出しはPythonではなくClaude/EDITHが行う。
+        """
+
+        registry = self._load_registry()
+        if not registry:
+            return {"status": "error", "error": "department_registry.json の読み込み失敗"}
+
+        # mission_type に対応する部署を検索
+        for dept_key, dept_info in registry.items():
+            if mission_type in dept_info.get("mission_types", []):
+                if not dept_info.get("enabled", False):
+                    return {
+                        "status": "disabled",
+                        "department": dept_key,
+                        "message": f"{dept_info['name']} は無効化されています",
+                    }
+
+                prompt_path = _THIS_DIR / dept_info["prompt_file"]
+                return {
+                    "status": "ready",
+                    "department": dept_key,
+                    "department_name": dept_info["name"],
+                    "prompt_file": str(prompt_path),
+                    "root_path": str(_THIS_DIR / dept_info["root_path"]),
+                }
+
+        return {
+            "status": "not_found",
+            "error": f"ミッションタイプ '{mission_type}' に対応する部署が見つかりません",
+        }
+
+    def _load_registry(self) -> Optional[Dict]:
+        """department_registry.json を読み込む"""
+
+        registry_path = _THIS_DIR / "department_registry.json"
+        if not registry_path.exists():
+            print(f"[{self.name} CEO] department_registry.json が見つかりません")
+            return None
+
+        try:
+            return json.loads(registry_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"[{self.name} CEO] レジストリ読み込みエラー: {e}")
+            return None
+
     def execute_daily_mission(self, mission_type: str = "daily_blog"):
-        """日常ミッション実行（事業部制）"""
+        """日常ミッションのディスパッチ情報を返す。
+        （後方互換性のために残す。実際のTask Tool呼び出しはClaude/EDITHが行う）
+        """
 
         print(f"\n[{self.name} CEO] 本日のミッション: {mission_type}")
 
-        if mission_type == "daily_blog":
-            target_dept = "blog_department"
-        elif mission_type == "room8_strategy":
-            target_dept = "room8_strategy_department"
-        else:
-            print(f"[{self.name} CEO] 新規ミッション。適切な事業部を選定中...")
-            return None
+        dispatch = self.get_dispatch_info(mission_type)
+        print(f"[{self.name} CEO] ディスパッチ情報: {json.dumps(dispatch, ensure_ascii=False, indent=2)}")
 
-        if target_dept in self.departments:
-            dept = self.departments[target_dept]
-            print(f"[{self.name} CEO] {dept['name']} に実行指示")
-            print(f"[{self.name} CEO] 担当部長: {dept['karo']}")
+        return dispatch
 
-            # 実際の実装では、ここで該当事業部の家老Agentを起動
-            return f"{target_dept}_mission_initiated"
+    def _save_mission_report(self, mission_type: str, result: Dict[str, Any]):
+        """CEOレベルのミッション報告保存"""
 
-        return None
+        ensure_dirs()
+        reports_dir = REPORTS_DIR
+
+        report = {
+            "mission_type": mission_type,
+            "executed_by": self.name,
+            "executed_at": datetime.now().isoformat(),
+            "mission_status": result.get("status", "unknown"),
+            "steps_completed": len(result.get("steps", [])),
+            "department_review": result.get("department_review", {}),
+            "summary": {
+                "deliverables_count": len(result.get("final_deliverables", {})),
+                "article_dir": result.get("final_deliverables", {}).get("article_directory"),
+            }
+        }
+
+        report_file = reports_dir / f"ceo_mission_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        report_file.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8"
+        )
+
+        print(f"[{self.name} CEO] ミッション報告保存: {report_file}")
 
     def review_department_proposal(self, proposal_file: str = None):
         """事業部提案の審査・承認システム"""
 
-        print(f"\n[{self.name} CEO] 📋 事業部提案審査開始")
+        print(f"\n[{self.name} CEO] 事業部提案審査開始")
 
-        # 最新の提案書を自動検出
         if not proposal_file:
-            reports_dir = "reports"
-            if os.path.exists(reports_dir):
-                proposal_files = [f for f in os.listdir(reports_dir) if f.startswith("blog_dept_proposal_")]
+            reports_dir = REPORTS_DIR
+            if reports_dir.exists():
+                proposal_files = [f for f in reports_dir.iterdir() if f.name.startswith("blog_dept_proposal_")]
                 if proposal_files:
-                    proposal_file = os.path.join(reports_dir, sorted(proposal_files)[-1])
+                    proposal_file = str(sorted(proposal_files)[-1])
                     print(f"[{self.name} CEO] 最新提案書検出: {proposal_file}")
 
-        if not proposal_file or not os.path.exists(proposal_file):
-            print(f"[{self.name} CEO] ❌ 提案書が見つかりません")
+        if not proposal_file or not Path(proposal_file).exists():
+            print(f"[{self.name} CEO] 提案書が見つかりません")
             return None
 
-        # 提案書読み込み
         with open(proposal_file, "r", encoding="utf-8") as f:
             proposal_data = json.load(f)
 
@@ -223,25 +283,22 @@ class EDITHCorporation:
     def _evaluate_and_decide(self, proposal_data: Dict[str, Any]) -> Dict[str, Any]:
         """提案評価・意思決定"""
 
-        print(f"\n[{self.name} CEO] 🔍 提案内容精査中...")
+        print(f"\n[{self.name} CEO] 提案内容精査中...")
 
         executive_summary = proposal_data.get("executive_summary", {})
         detailed_proposal = proposal_data.get("detailed_proposal", {})
 
-        # 提案概要表示
-        print(f"[{self.name} CEO] 📊 提案概要:")
+        print(f"[{self.name} CEO] 提案概要:")
         print(f"  現状: {executive_summary.get('current_situation', 'N/A')}")
         print(f"  目標: {executive_summary.get('target', 'N/A')}")
         print(f"  課題: {executive_summary.get('challenge', 'N/A')}")
         print(f"  解決策: {executive_summary.get('solution', 'N/A')}")
         print(f"  期待結果: {executive_summary.get('expected_result', 'N/A')}")
 
-        # 自動評価ロジック
         approval_score = self._calculate_approval_score(detailed_proposal)
 
-        print(f"\n[{self.name} CEO] 📈 提案評価スコア: {approval_score}/100")
+        print(f"\n[{self.name} CEO] 提案評価スコア: {approval_score}/100")
 
-        # 承認判定
         if approval_score >= 80:
             decision = self._approve_proposal(detailed_proposal)
         elif approval_score >= 60:
@@ -249,7 +306,6 @@ class EDITHCorporation:
         else:
             decision = self._reject_proposal(detailed_proposal)
 
-        # 決定通知の保存
         decision_record = {
             "decision": decision["status"],
             "score": approval_score,
@@ -260,11 +316,14 @@ class EDITHCorporation:
             "decided_at": datetime.now().isoformat()
         }
 
-        decision_file = f"reports/ceo_decision_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(decision_file, "w", encoding="utf-8") as f:
-            json.dump(decision_record, f, ensure_ascii=False, indent=2)
+        ensure_dirs()
+        decision_file = REPORTS_DIR / f"ceo_decision_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        decision_file.write_text(
+            json.dumps(decision_record, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
 
-        print(f"[{self.name} CEO] 📁 決定記録保存: {decision_file}")
+        print(f"[{self.name} CEO] 決定記録保存: {decision_file}")
 
         return decision_record
 
@@ -273,52 +332,48 @@ class EDITHCorporation:
 
         score = 0
 
-        # 新設足軽の妥当性評価
         new_ashigaru = proposal.get("new_ashigaru", {})
         for ashigaru_name, details in new_ashigaru.items():
             priority = details.get("priority", 3)
             expected_impact = details.get("expected_impact", "")
 
-            if priority == 1:  # 最高優先度
+            if priority == 1:
                 score += 25
             elif priority == 2:
                 score += 20
             elif priority == 3:
                 score += 15
 
-            # 数値的効果が明記されている場合
             if "%" in expected_impact or "倍" in expected_impact:
                 score += 10
 
-        # 予算の妥当性
         budget = proposal.get("budget_request", {})
         payback_period = budget.get("payback_period", "")
         if "ヶ月" in payback_period:
-            months = int(payback_period.replace("ヶ月", ""))
-            if months <= 3:
-                score += 20
-            elif months <= 6:
-                score += 15
-            else:
-                score += 5
+            try:
+                months = int(payback_period.replace("ヶ月", ""))
+                if months <= 3:
+                    score += 20
+                elif months <= 6:
+                    score += 15
+                else:
+                    score += 5
+            except ValueError:
+                pass
 
-        # 実装計画の具体性
         timeline = proposal.get("implementation_timeline", {})
-        if len(timeline) >= 3:  # 段階的計画がある
+        if len(timeline) >= 3:
             score += 15
 
-        return min(score, 100)  # 最大100点
+        return min(score, 100)
 
     def _approve_proposal(self, proposal: Dict[str, Any]) -> Dict[str, Any]:
         """提案承認"""
 
-        print(f"\n[{self.name} CEO] ✅ 提案承認決定")
-        print(f"[{self.name} CEO] 理由: 戦略的妥当性高、ROI明確、実装計画具体的")
+        print(f"\n[{self.name} CEO] 提案承認決定")
 
-        # 承認された変更を実装
         approved_changes = []
 
-        # 新設足軽の承認
         for ashigaru_name, details in proposal.get("new_ashigaru", {}).items():
             approved_changes.append({
                 "type": "new_ashigaru",
@@ -327,12 +382,10 @@ class EDITHCorporation:
                 "expected_impact": details.get("expected_impact", "")
             })
 
-            # 実際のディレクトリ作成
-            ashigaru_dir = f"blog_department/{ashigaru_name}"
-            os.makedirs(ashigaru_dir, exist_ok=True)
-            print(f"[{self.name} CEO] 📁 {ashigaru_name} 配置完了")
+            ashigaru_dir = Path(self.company_root) / "blog_department" / ashigaru_name
+            ashigaru_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[{self.name} CEO] {ashigaru_name} 配置完了")
 
-        # 足軽大将の承認
         taisho = proposal.get("taisho_recommendation")
         if taisho:
             approved_changes.append({
@@ -341,11 +394,11 @@ class EDITHCorporation:
                 "manages": taisho.get("manages", [])
             })
 
-            taisho_dir = "blog_department/content_taisho"
-            os.makedirs(taisho_dir, exist_ok=True)
-            print(f"[{self.name} CEO] 👑 コンテンツ足軽大将任命")
+            taisho_dir = Path(self.company_root) / "blog_department" / "content_taisho"
+            taisho_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[{self.name} CEO] コンテンツ足軽大将任命")
 
-        print(f"[{self.name} CEO] 🚀 組織改革実行開始指示")
+        print(f"[{self.name} CEO] 組織改革実行開始指示")
 
         return {
             "status": "approved",
@@ -357,7 +410,7 @@ class EDITHCorporation:
     def _conditional_approval(self, proposal: Dict[str, Any]) -> Dict[str, Any]:
         """条件付き承認"""
 
-        print(f"\n[{self.name} CEO] ⚠️ 条件付き承認")
+        print(f"\n[{self.name} CEO] 条件付き承認")
 
         conditions = [
             "新設足軽は段階的配置（1名ずつ効果検証）",
@@ -379,7 +432,7 @@ class EDITHCorporation:
     def _reject_proposal(self, proposal: Dict[str, Any]) -> Dict[str, Any]:
         """提案却下"""
 
-        print(f"\n[{self.name} CEO] ❌ 提案却下")
+        print(f"\n[{self.name} CEO] 提案却下")
 
         rejection_reasons = [
             "ROIの根拠不十分",
@@ -391,7 +444,7 @@ class EDITHCorporation:
         for i, reason in enumerate(rejection_reasons, 1):
             print(f"  {i}. {reason}")
 
-        print(f"[{self.name} CEO] 🔄 再提案を要求")
+        print(f"[{self.name} CEO] 再提案を要求")
 
         return {
             "status": "rejected",
@@ -399,6 +452,7 @@ class EDITHCorporation:
             "rejection_reasons": rejection_reasons,
             "next_action": "改善後再提案"
         }
+
 
 def main():
     """EDITH Corporation テスト実行"""
@@ -408,14 +462,17 @@ def main():
     # 組織状況確認
     edith.get_organization_status()
 
-    # 事業部評価
-    edith.evaluate_department("blog_department", 90, "コンテンツ品質向上、アクセス数増加")
+    # ディスパッチ情報テスト
+    print("\n--- ディスパッチテスト ---")
+    dispatch = edith.get_dispatch_info("daily_blog")
+    print(json.dumps(dispatch, ensure_ascii=False, indent=2))
 
-    # 足軽大将提案テスト
-    edith.propose_taisho_system("blog_department", "writing", "ライティング足軽の作業負荷過多")
+    dispatch2 = edith.get_dispatch_info("room8_strategy")
+    print(json.dumps(dispatch2, ensure_ascii=False, indent=2))
 
-    # 日常ミッション実行
-    edith.execute_daily_mission("daily_blog")
+    dispatch3 = edith.get_dispatch_info("unknown_mission")
+    print(json.dumps(dispatch3, ensure_ascii=False, indent=2))
+
 
 if __name__ == "__main__":
     main()

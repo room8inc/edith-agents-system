@@ -11,6 +11,13 @@ import base64
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from dotenv import load_dotenv
+
+# .env.localから環境変数を読み込み
+_project_root = Path(__file__).resolve().parent.parent.parent.parent
+_env_path = _project_root / '.env.local'
+if _env_path.exists():
+    load_dotenv(str(_env_path))
 
 class WordPressPublisher:
     """WordPress投稿足軽 - 記事と画像の一括投稿"""
@@ -21,9 +28,9 @@ class WordPressPublisher:
         self.reports_to = "コンテンツ足軽大将"
 
         # WordPress API設定（環境変数から取得）
-        self.wp_site_url = os.environ.get('WP_SITE_URL', 'https://www.room8.co.jp')
-        self.wp_username = os.environ.get('WP_USERNAME')
-        self.wp_app_password = os.environ.get('WP_APP_PASSWORD')
+        self.wp_site_url = os.environ.get('WORDPRESS_URL') or os.environ.get('WP_SITE_URL', 'https://www.room8.co.jp')
+        self.wp_username = os.environ.get('WORDPRESS_USERNAME') or os.environ.get('WP_USERNAME')
+        self.wp_app_password = os.environ.get('WORDPRESS_APPLICATION_PASSWORD') or os.environ.get('WP_APP_PASSWORD')
 
         # API エンドポイント
         self.wp_api_base = f"{self.wp_site_url}/wp-json/wp/v2"
@@ -414,7 +421,10 @@ def test_wordpress_publishing():
     workflow = ArticlePublishingWorkflow()
 
     # テスト記事ディレクトリパスを探索
-    articles_base = "articles"
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+    from output_paths import BLOG_ARTICLES_DIR
+    articles_base = str(BLOG_ARTICLES_DIR)
     if os.path.exists(articles_base):
         # 最新の記事ディレクトリを使用
         article_dirs = [d for d in os.listdir(articles_base) if os.path.isdir(os.path.join(articles_base, d))]

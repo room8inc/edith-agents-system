@@ -1,0 +1,32 @@
+{
+  "web_marketing_department": {
+    "name": "Webマーケティング部門",
+    "prompt_file": "web_marketing_department/DEPARTMENT_PROMPT.md",
+    "root_path": "web_marketing_department/",
+    "mission_types": ["check_strategy", "daily_blog", "research_and_strategy", "write_article", "content_review", "strategy_review"],
+    "enabled": true
+  },
+  "blog_department": {
+    "name": "ブログ事業部",
+    "prompt_file": "blog_department/DEPARTMENT_PROMPT.md",
+    "root_path": "blog_department/",
+    "mission_types": [],
+    "enabled": true,
+    "note": "Webマーケティング部門から呼ばれる制作部門。EDITHが直接呼ぶことはない"
+  },
+  "research_department": {
+    "name": "リサーチ部門",
+    "prompt_file": "research_department/DEPARTMENT_PROMPT.md",
+    "root_path": "research_department/",
+    "mission_types": ["trend_research", "keyword_research", "competitor_analysis"],
+    "enabled": true,
+    "note": "Webマーケティング部門がツールとして利用。EDITHが直接呼ぶこともある"
+  },
+  "room8_strategy_department": {
+    "name": "Room8戦略事業部",
+    "prompt_file": "room8_strategy_department/DEPARTMENT_PROMPT.md",
+    "root_path": "room8_strategy_department/",
+    "mission_types": ["room8_strategy"],
+    "enabled": false
+  }
+}

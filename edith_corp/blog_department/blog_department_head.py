@@ -4,10 +4,29 @@
 目標: MAU 1.1万→1.5万達成のための組織設計・管理
 """
 
+import sys
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Any, Optional
+
+# Path(__file__)ベースでインポートパスを設定
+_THIS_DIR = Path(__file__).resolve().parent
+
+import sys
+sys.path.insert(0, str(_THIS_DIR.parent))
+from output_paths import REPORTS_DIR, ensure_dirs
+
+# ContentTaisho をインポート
+sys.path.insert(0, str(_THIS_DIR / "content_taisho"))
+
+try:
+    from content_taisho import ContentTaisho
+except ImportError as e:
+    ContentTaisho = None
+    print(f"[ブログ事業部長] ContentTaisho インポート失敗: {e}")
+
 
 class BlogDepartmentHead:
     """ブログ事業部長 - 自律型戦略立案・組織管理"""
@@ -35,18 +54,114 @@ class BlogDepartmentHead:
         print(f"[{self.position}] 事業部稼働開始")
         print(f"[{self.position}] 目標: MAU {self.current_mau:,} → {self.target_mau:,} ({self.target_period})")
 
+    def dispatch_daily_mission(self, mission_params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """日次ミッションをContentTaishoに委任"""
+
+        print(f"\n[{self.position}] 日次ミッション指揮開始")
+
+        # 戦略パラメータを付加
+        enriched_params = {
+            "target_audience": "中小企業経営者・個人事業主",
+            "content_strategy": "問題解決型",
+            "focus_area": "AI・デジタル化",
+            "seo_policy": "ロングテールキーワード重視（3-4語）",
+            "writing_style": "成田悠輔風毒舌",
+            "target_mau": self.target_mau,
+            "current_mau": self.current_mau,
+        }
+
+        # 呼び出し元からのパラメータで上書き
+        if mission_params:
+            enriched_params.update(mission_params)
+
+        print(f"[{self.position}] 戦略パラメータ付加完了")
+        print(f"[{self.position}] コンテンツ足軽大将に委任...")
+
+        # ContentTaisho を生成して実行
+        if not ContentTaisho:
+            print(f"[{self.position}] ContentTaisho が利用不可")
+            return {
+                "status": "failed",
+                "error": "ContentTaisho import failed",
+                "dispatched_by": self.position,
+            }
+
+        try:
+            taisho = ContentTaisho()
+            mission_result = taisho.execute_daily_blog_mission(enriched_params)
+        except Exception as e:
+            print(f"[{self.position}] ContentTaisho 実行エラー: {e}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "dispatched_by": self.position,
+            }
+
+        # 結果レビュー
+        reviewed = self._review_mission_result(mission_result)
+
+        return reviewed
+
+    def _review_mission_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """ミッション結果をレビューして評価を付加"""
+
+        print(f"\n[{self.position}] ミッション結果レビュー")
+
+        status = result.get("status", "unknown")
+        steps = result.get("steps", [])
+        deliverables = result.get("final_deliverables", {})
+
+        # 評価
+        review = {
+            "reviewer": self.position,
+            "reviewed_at": datetime.now().isoformat(),
+            "mission_status": status,
+            "steps_completed": len(steps),
+        }
+
+        if status == "success":
+            print(f"[{self.position}] ミッション成功 - {len(steps)}ステップ完了")
+
+            # 成果物チェック
+            has_article = bool(deliverables.get("wordpress_ready_article", {}).get("content"))
+            has_images = deliverables.get("image_generation", {}).get("successful_images", 0) > 0
+            has_wp = deliverables.get("wordpress_publishing", {}).get("success", False)
+
+            review["quality_check"] = {
+                "article_generated": has_article,
+                "images_generated": has_images,
+                "wordpress_posted": has_wp,
+            }
+
+            quality_score = 60
+            if has_article:
+                quality_score += 20
+            if has_images:
+                quality_score += 10
+            if has_wp:
+                quality_score += 10
+            review["quality_score"] = quality_score
+
+            print(f"[{self.position}] 品質スコア: {quality_score}/100")
+        else:
+            error = result.get("error", "不明")
+            print(f"[{self.position}] ミッション失敗: {error}")
+            review["quality_score"] = 0
+            review["failure_reason"] = error
+
+        result["department_review"] = review
+        return result
+
     def analyze_goal_requirements(self) -> Dict[str, Any]:
         """目標分析：MAU増加に必要な要素を自律分析"""
 
         print(f"\n[{self.position}] 目標分析開始...")
 
-        # MAU増加率計算
         growth_rate = ((self.target_mau - self.current_mau) / self.current_mau) * 100
-        monthly_growth_required = growth_rate / 3  # 3ヶ月での達成
+        monthly_growth_required = growth_rate / 3
 
         print(f"[{self.position}] 必要成長率: {growth_rate:.1f}% (月間 {monthly_growth_required:.1f}%)")
 
-        # 成長要因分析
         growth_factors = {
             "content_frequency": {
                 "current": "毎日更新",
@@ -89,9 +204,7 @@ class BlogDepartmentHead:
             "analysis_timestamp": datetime.now().isoformat()
         }
 
-        print(f"[{self.position}] ✅ 目標分析完了")
-        print(f"[{self.position}] 重点分野: SEO最適化、SNS連携、コンテンツ頻度")
-
+        print(f"[{self.position}] 目標分析完了")
         return analysis_result
 
     def diagnose_current_capabilities(self) -> Dict[str, Any]:
@@ -99,7 +212,6 @@ class BlogDepartmentHead:
 
         print(f"\n[{self.position}] 現状診断開始...")
 
-        # 各足軽の能力評価
         capability_gaps = {}
 
         for ashigaru_name, status in self.current_ashigaru.items():
@@ -111,7 +223,6 @@ class BlogDepartmentHead:
                     "required_improvement": "専門性強化または増員",
                     "urgency": "高"
                 }
-
             elif ashigaru_name == "research" and performance < 85:
                 capability_gaps[ashigaru_name] = {
                     "issue": "トレンド分析精度不足",
@@ -119,7 +230,6 @@ class BlogDepartmentHead:
                     "urgency": "中"
                 }
 
-        # 不足している機能の特定
         missing_capabilities = {
             "seo_specialist": {
                 "reason": "keyword_strategy足軽では専門性不足",
@@ -146,9 +256,7 @@ class BlogDepartmentHead:
             "diagnosis_timestamp": datetime.now().isoformat()
         }
 
-        print(f"[{self.position}] ⚠️ 診断結果: 現状組織では目標達成困難")
-        print(f"[{self.position}] 不足機能: SEO専門、SNS管理、分析専門")
-
+        print(f"[{self.position}] 診断結果: 現状組織では目標達成困難")
         return diagnosis_result
 
     def propose_organizational_changes(self, goal_analysis: Dict, current_diagnosis: Dict) -> Dict[str, Any]:
@@ -156,7 +264,6 @@ class BlogDepartmentHead:
 
         print(f"\n[{self.position}] 組織改革案策定中...")
 
-        # 新設足軽の提案
         new_ashigaru_proposals = {
             "seo_specialist_ashigaru": {
                 "specialization": "SEO戦略・技術最適化",
@@ -178,7 +285,6 @@ class BlogDepartmentHead:
             }
         }
 
-        # 既存足軽の改善提案
         ashigaru_improvements = {
             "keyword_strategy": {
                 "current_performance": 70,
@@ -194,7 +300,6 @@ class BlogDepartmentHead:
             }
         }
 
-        # 足軽大将の検討
         taisho_recommendation = None
         if len(new_ashigaru_proposals) + len(self.current_ashigaru) >= 8:
             taisho_recommendation = {
@@ -222,18 +327,14 @@ class BlogDepartmentHead:
             "proposal_timestamp": datetime.now().isoformat()
         }
 
-        print(f"[{self.position}] 📋 組織改革案策定完了")
-        print(f"[{self.position}] 新設提案: SEO専門、SNS管理、分析専門足軽")
-        print(f"[{self.position}] 予想効果: MAU目標達成確率80%→95%")
-
+        print(f"[{self.position}] 組織改革案策定完了")
         return proposal
 
     def submit_proposal_to_ceo(self, proposal: Dict[str, Any]):
         """CEO報告：組織変更提案をEDITH CEOに提出"""
 
-        print(f"\n[{self.position}] 📤 EDITH CEOに組織変更提案を提出")
+        print(f"\n[{self.position}] EDITH CEOに組織変更提案を提出")
 
-        # 提案書作成
         ceo_report = {
             "from": self.position,
             "to": "EDITH CEO",
@@ -250,15 +351,18 @@ class BlogDepartmentHead:
             "submitted_at": datetime.now().isoformat()
         }
 
-        # 報告書保存
-        report_file = f"../reports/blog_dept_proposal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        os.makedirs("../reports", exist_ok=True)
+        ensure_dirs()
+        reports_dir = REPORTS_DIR
 
-        with open(report_file, "w", encoding="utf-8") as f:
-            json.dump(ceo_report, f, ensure_ascii=False, indent=2)
+        report_file = reports_dir / f"blog_dept_proposal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
-        print(f"[{self.position}] 📁 提案書保存: {report_file}")
-        print(f"[{self.position}] ⏰ CEO承認待ち")
+        report_file.write_text(
+            json.dumps(ceo_report, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+        print(f"[{self.position}] 提案書保存: {report_file}")
+        print(f"[{self.position}] CEO承認待ち")
 
         return ceo_report
 
@@ -293,16 +397,18 @@ class BlogDepartmentHead:
             "ceo_report": ceo_report
         }
 
+
 def main():
     """ブログ事業部長テスト実行"""
 
     blog_head = BlogDepartmentHead()
     result = blog_head.execute_autonomous_analysis()
 
-    print(f"\n🎯 自律分析結果:")
+    print(f"\n自律分析結果:")
     print(f"   新設足軽提案: {len(result['proposal']['new_ashigaru'])}名")
     print(f"   改善対象足軽: {len(result['proposal']['ashigaru_improvements'])}名")
     print(f"   目標達成確率: 30% → 95%")
+
 
 if __name__ == "__main__":
     main()

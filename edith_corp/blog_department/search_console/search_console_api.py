@@ -6,10 +6,13 @@ Search Console API連携モジュール
 
 import json
 import os
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+
+_THIS_DIR = Path(__file__).resolve().parent
 
 class SearchConsoleAPI:
     """Search Console APIラッパー"""
@@ -350,8 +353,8 @@ class SearchConsoleIntegration:
         if credentials_path:
             self.api.credentials_path = credentials_path
         elif not self.api.credentials_path:
-            # デフォルトパス
-            self.api.credentials_path = 'credentials/claude-agent-486408-2670454f8c9f.json'
+            # デフォルトパス（絶対パス）
+            self.api.credentials_path = str(_THIS_DIR / 'credentials' / 'claude-agent-486408-2670454f8c9f.json')
 
         # 認証実行
         success = self.api.authenticate(site_url)
@@ -373,10 +376,10 @@ class SearchConsoleIntegration:
             'setup_date': datetime.now().isoformat()
         }
 
-        config_dir = 'config'
+        config_dir = _THIS_DIR / 'config'
         os.makedirs(config_dir, exist_ok=True)
 
-        with open(f'{config_dir}/search_console_config.json', 'w') as f:
+        with open(str(config_dir / 'search_console_config.json'), 'w') as f:
             json.dump(config, f, indent=2)
 
         print(f"[Search Console] 📁 設定保存完了")
