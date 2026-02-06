@@ -1,0 +1,92 @@
+{
+  "department": "Webマーケティング部門",
+  "business_purpose": "リスキリング・AI研修サービスへの集客 → 問い合わせ獲得",
+  "current_phase": "コンバージョン導線構築期",
+  "kpi": {
+    "mau": {
+      "current": 12642,
+      "target": 15000,
+      "unit": "人/月",
+      "source": "GA4 28日間アクティブユーザー（2026-02-06取得）"
+    },
+    "inquiry": {
+      "current": 0,
+      "target": 5,
+      "unit": "件/月",
+      "note": "AI研修・リスキリングの問い合わせ数。MAUだけ追っても売上に繋がらないため追加"
+    },
+    "returning_users_ratio": {
+      "current": 2.5,
+      "target": 10,
+      "unit": "%",
+      "note": "リピーター率。現状97.5%が新規で読み捨てされている"
+    }
+  },
+  "target_audience": "中小企業経営者・個人事業主",
+  "strategic_pillars": {
+    "pillar_1_diversify_traffic": {
+      "name": "1記事依存の脱却",
+      "why": "gemini-workspace-vs-pro が全PVの29%。この1記事が落ちたらMAU崩壊",
+      "how": "比較・違い系記事を横展開し、複数の柱を立てる",
+      "target_areas": ["GPT vs Claude vs Gemini 最新比較", "Copilot vs Gemini Workspace", "AI料金プラン比較"],
+      "success_metric": "PV上位5記事で全体の50%以上をカバー（現状1記事で29%）"
+    },
+    "pillar_2_conversion_funnel": {
+      "name": "コンバージョン導線の構築",
+      "why": "742本書いてAI研修の問い合わせゼロ。集客はしているが売上に繋がっていない",
+      "how": "AI研修・助成金コンテンツを作り、読者が研修を受けたいと思う導線を構築",
+      "target_areas": ["AI研修 助成金 申請方法", "リスキリング 中小企業 事例", "AI導入 研修 費用"],
+      "success_metric": "問い合わせ月5件"
+    },
+    "pillar_3_repeat_visitors": {
+      "name": "リピーター獲得",
+      "why": "新規97.5%。読んで去るだけのサイトでは信頼が蓄積しない",
+      "how": "AI業界の最新ニュース・アップデート情報を定期発信し、また来たくなる理由を作る",
+      "target_areas": ["AI新機能レビュー", "月次AI業界まとめ", "実務で使えるAIの小技"],
+      "success_metric": "リピーター率10%"
+    }
+  },
+  "content_strategy": {
+    "approach": "問題解決型 + ニュース型のハイブリッド",
+    "frequency": "週3-4本（質を優先。毎日1本は現実的でない）",
+    "content_mix": {
+      "comparison": "40% - 比較記事（実績ある勝ちパターン）",
+      "conversion": "30% - AI研修・助成金・リスキリング（売上直結）",
+      "news_review": "20% - AI新機能レビュー・業界ニュース（リピーター獲得）",
+      "case_study": "10% - 導入事例・活用事例（信頼構築）"
+    }
+  },
+  "seo_strategy": {
+    "approach": "ロングテールキーワード重視（3-4語）",
+    "winning_patterns": [
+      "AI関連の「違い」「比較」「失敗」キーワード",
+      "AI研修・助成金関連キーワード",
+      "最新AI機能のレビュー系キーワード"
+    ],
+    "proven_keywords": [
+      {"keyword": "google workspace gemini pro", "ctr": 0.5},
+      {"keyword": "google one gemini", "ctr": 0.338, "clicks": 312, "position": 2.3}
+    ],
+    "low_hanging_fruit": [
+      {"keyword": "アップルインテリジェンス", "position": 11.4, "impressions": 1000, "action": "既存記事のSEO最適化で1ページ目を狙う"},
+      {"keyword": "claude cowork", "position": 14.4, "impressions": 188, "action": "既存記事のSEO最適化で1ページ目を狙う"}
+    ]
+  },
+  "risk": {
+    "single_article_dependency": {
+      "article": "/gemini-workspace-vs-pro/",
+      "pv_share": "29%",
+      "severity": "high",
+      "mitigation": "pillar_1_diversify_traffic"
+    }
+  },
+  "focus_areas": [
+    "AI研修・リスキリング助成金",
+    "ChatGPT・Claude・Gemini比較",
+    "AI導入失敗パターンと解決策",
+    "中小企業のAI活用事例"
+  ],
+  "updated_at": "2026-02-06",
+  "next_review": "2026-03-06",
+  "review_notes": "2026-02-06: フェーズを「コンバージョン導線構築期」に変更。KPIに問い合わせ数・リピーター率を追加。3本柱の戦略を策定（1記事依存脱却・CV導線・リピーター）。記事頻度を週3-4本に現実化。コンテンツミックス比率を設定。"
+}
