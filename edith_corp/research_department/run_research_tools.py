@@ -8,6 +8,7 @@ Usage:
   python3 run_research_tools.py search_console
   python3 run_research_tools.py existing_articles
   python3 run_research_tools.py known_keywords
+  python3 run_research_tools.py ga4
 """
 
 import sys
@@ -186,10 +187,66 @@ def cmd_known_keywords() -> dict:
         }
 
 
+def cmd_ga4() -> dict:
+    """Google Analytics 4 からアクセスデータを取得"""
+    config_path = _THIS_DIR / "config" / "ga4_config.json"
+
+    if not config_path.exists():
+        return {
+            "status": "error",
+            "error": f"GA4設定ファイルが見つかりません: {config_path}",
+            "data": {},
+        }
+
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        property_id = config.get("property_id", "")
+        credentials_path = config.get("credentials_path", "")
+
+        if not property_id:
+            return {
+                "status": "error",
+                "error": "property_id が未設定です。GA4管理画面でプロパティIDを確認し、config/ga4_config.json に設定してください。",
+                "data": {},
+            }
+
+        from ga4_api import GA4API
+
+        api = GA4API(credentials_path=credentials_path, property_id=property_id)
+        if not api.authenticate():
+            return {
+                "status": "error",
+                "error": "GA4 API認証失敗。サービスアカウントがGA4プロパティの閲覧者として追加されているか確認してください。",
+                "data": {},
+            }
+
+        report = api.get_full_report(days=28)
+        return {
+            "status": "success",
+            "data": report,
+            "retrieved_at": datetime.now().isoformat(),
+        }
+
+    except ImportError as e:
+        return {
+            "status": "error",
+            "error": f"GA4モジュール読み込み失敗: {e}",
+            "data": {},
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "data": {},
+        }
+
+
 COMMANDS = {
     "search_console": cmd_search_console,
     "existing_articles": cmd_existing_articles,
     "known_keywords": cmd_known_keywords,
+    "ga4": cmd_ga4,
 }
 
 

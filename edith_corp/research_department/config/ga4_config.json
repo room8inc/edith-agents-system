@@ -1,0 +1,5 @@
+{
+  "property_id": "263932518",
+  "credentials_path": "/Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/search_console/credentials/claude-agent-486408-2670454f8c9f.json",
+  "note": "property_id は GA4 管理画面 > プロパティ設定 で確認。数字のみ（例: 123456789）。credentials_path は Search Console と同じサービスアカウントを使用。GA4 プロパティの管理画面でこのサービスアカウントのメールアドレスを閲覧者として追加すること。"
+}

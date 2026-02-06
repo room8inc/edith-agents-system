@@ -76,6 +76,9 @@ EDITHから渡される `mission_type` に応じて実行内容が決まりま�
 # Search Console 実データ取得
 python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py search_console
 
+# Google Analytics 4 アクセスデータ取得
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py ga4
+
 # 既存記事一覧
 python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py existing_articles
 
@@ -147,6 +150,7 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
   "generated_at": "2026-02-06T09:00:00+09:00",
   "research_data": {
     "search_console": { "...リサーチツールのstdout結果そのまま..." },
+    "ga4": { "...GA4のstdout結果そのまま（overview, top_pages, traffic_sources）..." },
     "existing_articles": [ "...既存記事リスト..." ],
     "known_keywords": [ "...成功KWリスト..." ],
     "web_trends": [ {"topic": "...", "source": "URL", "summary": "..."} ],

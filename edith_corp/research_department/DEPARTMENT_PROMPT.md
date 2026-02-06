@@ -40,6 +40,17 @@ python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_re
 
 Search Console API認証が失敗した場合は、エラーを記録してStep 3に進んでください。
 
+### Step 2.5: Google Analytics 4 アクセスデータ取得
+Bash で以下を実行:
+
+```bash
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py ga4
+```
+
+GA4からサイト全体のアクセス概況（ユーザー数、PV、直帰率、流入元、人気ページ）を取得します。
+
+GA4 API認証が失敗した場合は、エラーを記録して次のStepに進んでください。
+
 ### Step 3: 既存記事一覧の取得
 Bash で以下を実行:
 
@@ -81,6 +92,12 @@ python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_re
     "content_gaps": [],
     "performance_summary": {}
   },
+  "ga4_data": {
+    "status": "success または error",
+    "overview": { "active_users": 0, "sessions": 0, "page_views": 0, "bounce_rate": 0 },
+    "top_pages": [],
+    "traffic_sources": []
+  },
   "existing_articles": [
     {
       "date": "YYYYMMDD",
@@ -100,6 +117,7 @@ python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_re
 
 ## エラー処理
 - Search Console API失敗 → `search_console_data.status: "error"` として続行
+- GA4 API失敗 → `ga4_data.status: "error"` として続行
 - 既存記事なし → `existing_articles: []` として続行
 - WebSearch失敗 → エラーを記録し、取得できた分だけ返す
 - 全Step失敗 → `status: "error"` で報告
