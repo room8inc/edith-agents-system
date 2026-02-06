@@ -294,6 +294,7 @@ class WordPressPublisher:
 
             post_data = {
                 "title": meta_data.get("title", ""),
+                "slug": meta_data.get("slug", ""),
                 "content": content,
                 "status": "draft",
             }
