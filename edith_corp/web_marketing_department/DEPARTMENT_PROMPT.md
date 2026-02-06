@@ -54,13 +54,13 @@ EDITHから渡される `mission_type` に応じて実行内容が決まりま�
     "exists": true,
     "generated_at": "2026-02-06T09:00:00+09:00",
     "is_fresh": true,
-    "top_theme": "最優先テーマのタイトル",
-    "themes_count": 3
+    "content_priorities_count": 3,
+    "timely_topics_count": 2
   }
 }
 ```
 
-`latest_brief.exists` が false の場合は `generated_at`, `is_fresh`, `top_theme`, `themes_count` は省略。
+`latest_brief.exists` が false の場合は `generated_at`, `is_fresh`, `content_priorities_count`, `timely_topics_count` は省略。
 
 ---
 
@@ -122,22 +122,24 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
 
 変更が必要な場合は strategy.json を Write ツールで更新してください。
 
-### Step 1.3: テーマ候補3つ生成
+### Step 1.3: 戦略方針の策定
 
-リサーチ結果に基づき、次に書くべき記事テーマを**優先度付きで3つ**生成します。
+リサーチ結果に基づき、**コンテンツの戦略方針**を策定します。
+ここで出すのは具体的な記事テーマではなく、大きな方向性です。
+
+策定する内容:
+- **注力すべきコンテンツ領域**（例: 「AI助成金・補助金関連コンテンツが空白、攻めるべき」）
+- **伸ばすべきパターン**（例: 「比較記事がPV取れている、このパターンを続ける」）
+- **タイムリーに扱うべきネタ**（例: 「Copilot新プラン発表、紹介すべき」）
+- **狙うべきキーワード群**（例: 「AI研修 助成金」「AI導入 中小企業 事例」）
+- **コンテンツギャップ**（既存記事にない領域で需要があるもの）
 
 判断基準:
-- **既存記事と重複しないか？** → existing_articles の結果を確認
-- **strategy.json のフォーカス領域に合っているか？**
-- **ターゲット（中小企業経営者）に刺さるか？**
-- **SEO的に勝てるか？** → Search Console データ、キーワード競合性
+- **既存記事でカバーできていない領域は？** → existing_articles の結果を確認
+- **GA4で何が読まれているか？** → 人気ページ・流入元の傾向
+- **Search Consoleで何が伸びているか？** → 実績KW・改善機会
+- **AI各社の新機能で記事ネタになるものは？**
 - **最終的にAI研修の集客につながるか？**
-
-各テーマには以下を含めること:
-- タイトル案
-- ターゲットキーワード（2-3個）
-- 記事の切り口・角度
-- このテーマを選んだ理由
 
 ### Step 1.4: daily_brief.json を保存
 
@@ -164,29 +166,27 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
     "focus_areas": ["フォーカス領域1", "フォーカス領域2"],
     "target_audience": "ターゲット"
   },
-  "recommended_themes": [
+  "content_priorities": [
     {
-      "priority": 1,
-      "title": "テーマ案",
-      "keywords": ["kw1", "kw2"],
-      "angle": "切り口",
-      "reasoning": "選定理由"
-    },
-    {
-      "priority": 2,
-      "title": "テーマ案2",
-      "keywords": ["kw1", "kw2"],
-      "angle": "切り口",
-      "reasoning": "選定理由"
-    },
-    {
-      "priority": 3,
-      "title": "テーマ案3",
-      "keywords": ["kw1", "kw2"],
-      "angle": "切り口",
-      "reasoning": "選定理由"
+      "area": "注力領域名（例: AI助成金・補助金コンテンツ）",
+      "reasoning": "なぜこの領域か（例: 既存742記事に0本。事業目的に直結）",
+      "target_keywords": ["狙うべきKW1", "狙うべきKW2"]
     }
   ],
+  "winning_patterns": [
+    {
+      "pattern": "成功パターン名（例: AI比較記事）",
+      "evidence": "根拠（例: gemini比較記事がPV4,718で1位）"
+    }
+  ],
+  "timely_topics": [
+    {
+      "topic": "タイムリーなネタ（例: Copilot Business 中小企業向け新プラン）",
+      "source": "情報源",
+      "urgency": "high/medium/low"
+    }
+  ],
+  "content_gaps": ["既存記事にない需要領域"],
   "strategy_updated": false,
   "strategy_changes": []
 }
@@ -203,8 +203,8 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
   "brief_saved_to": "/Users/tsuruta/Documents/edith_output/briefs/daily_brief.json",
   "strategy_updated": false,
   "strategy_changes": [],
-  "recommended_themes_count": 3,
-  "top_theme": "最優先テーマのタイトル"
+  "content_priorities_count": 3,
+  "top_priority": "最も注力すべき領域名"
 }
 ```
 
@@ -235,13 +235,23 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
 
 ### Step 2.1: テーマ・KW確定
 
-`recommended_themes` の priority: 1 のテーマを採用します（EDITHからテーマ指定がある場合はそれに従う）。
+briefの戦略方針（`content_priorities`, `winning_patterns`, `timely_topics`, `content_gaps`）を見て、
+**今日書くべき具体的な記事テーマ**を1つ決めます。
+
+EDITHからテーマ指定がある場合はそれに従います。
+
+判断基準:
+- `content_priorities` の上位領域から具体化できるか？
+- `timely_topics` に urgency: high のネタがあるか？（あれば優先）
+- `winning_patterns` に乗れるテーマか？（実績あるパターンの再現）
+- `content_gaps` を埋められるか？
+- 既存記事（`research_data.existing_articles`）と重複しないか？
 
 決定事項:
 - 記事テーマ（タイトル案）
 - ターゲットキーワード（2-3個）
 - 記事の切り口・構成案
-- なぜこのテーマを選んだかの理由
+- なぜこのテーマを選んだかの理由（どの戦略方針に基づくか）
 
 ### Step 2.2: ブログ制作指示（フェーズA）
 
@@ -356,8 +366,8 @@ python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/run_ashiga
   "brief_saved_to": "/Users/tsuruta/Documents/edith_output/briefs/daily_brief.json",
   "strategy_updated": false,
   "strategy_changes": [],
-  "recommended_themes_count": 3,
-  "top_theme": "最優先テーマのタイトル"
+  "content_priorities_count": 3,
+  "top_priority": "最も注力すべき領域名"
 }
 ```
 
