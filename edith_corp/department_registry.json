@@ -28,5 +28,13 @@
     "root_path": "room8_strategy_department/",
     "mission_types": ["room8_strategy"],
     "enabled": false
+  },
+  "site_development_department": {
+    "name": "サイト制作部門",
+    "prompt_file": "site_development_department/DEPARTMENT_PROMPT.md",
+    "root_path": "site_development_department/",
+    "mission_types": ["theme_update", "page_content", "site_review", "wp_config"],
+    "enabled": true,
+    "note": "EDITHから直接呼ばれる。Room8サイト(room8-renewal テーマ)の開発・改善を統括"
   }
 }
