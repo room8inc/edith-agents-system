@@ -5,6 +5,7 @@ WordPress投稿足軽 - 記事とアイキャッチ画像の自動投稿シス�
 """
 
 import os
+import sys
 import json
 import requests
 import base64
@@ -13,6 +14,9 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+from output_paths import BLOG_ARTICLES_INDEX
 
 # .env.localから環境変数を読み込み
 _project_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -92,6 +96,8 @@ class WordPressPublisher:
         if post_result["success"]:
             # WordPressデータを保存
             self._save_wordpress_data(article_dir, post_result["post_data"], images_result)
+            # articles_index.json に自動追加（重複チェック用）
+            self._add_to_articles_index(meta_data, post_result["post_data"])
 
         result = {
             "article_directory": article_dir,
@@ -519,6 +525,51 @@ class WordPressPublisher:
             json.dump(publish_data, f, ensure_ascii=False, indent=2)
 
         print(f"[WordPress投稿足軽] 投稿データ保存: {publish_data_path}")
+
+    def _add_to_articles_index(self, meta_data: Dict[str, Any], post_data: Dict[str, Any]):
+        """articles_index.json に記事を追加（重複防止のため投稿時に即追加）"""
+
+        try:
+            # 既存のインデックスを読み込み
+            if BLOG_ARTICLES_INDEX.exists():
+                index = json.loads(BLOG_ARTICLES_INDEX.read_text(encoding="utf-8"))
+            else:
+                index = {"version": 1, "updated_at": "", "total_articles": 0, "articles": []}
+
+            slug = meta_data.get("slug", "")
+
+            # 同じスラッグが既にあればスキップ
+            if any(a.get("slug") == slug for a in index.get("articles", [])):
+                print(f"[WordPress投稿足軽] 記事インデックス: {slug} は既に登録済み")
+                return
+
+            # 新しいIDを生成（既存の最大ID + 1）
+            max_id = max((a.get("id", 0) for a in index.get("articles", [])), default=0)
+
+            new_entry = {
+                "id": max_id + 1,
+                "title": meta_data.get("title", ""),
+                "slug": slug,
+                "url": post_data.get("url", ""),
+                "published_date": datetime.now().strftime("%Y-%m-%d"),
+                "excerpt": meta_data.get("seo", {}).get("meta_description", ""),
+                "source": "wordpress"
+            }
+
+            # 先頭に追加（最新記事が上）
+            index["articles"].insert(0, new_entry)
+            index["total_articles"] = len(index["articles"])
+            index["updated_at"] = datetime.now().isoformat()
+
+            BLOG_ARTICLES_INDEX.write_text(
+                json.dumps(index, ensure_ascii=False, indent=2),
+                encoding="utf-8"
+            )
+
+            print(f"[WordPress投稿足軽] 記事インデックス追加: {slug} (ID: {new_entry['id']})")
+
+        except Exception as e:
+            print(f"[WordPress投稿足軽] 記事インデックス更新エラー: {e}")
 
 
 class ArticlePublishingWorkflow:
