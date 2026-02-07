@@ -235,8 +235,29 @@ WebSearch で strategy.json のフォーカス領域に関連するトレンド�
 
 ### Step 2.1: テーマ・KW確定
 
-briefの戦略方針（`content_priorities`, `winning_patterns`, `timely_topics`, `content_gaps`）を見て、
-**今日書くべき具体的な記事テーマ**を1つ決めます。
+#### 2.1a: 今日の記事タイプを判定（4週ローテーション）
+
+strategy.json の `rotation` を使って、今日書くべき**記事タイプ**を判定します。
+
+**判定手順:**
+1. 今日の日付と `rotation.cycle_start`（2026-02-10）の差分を計算
+2. 経過週数（月曜起算）を4で割った余り → W1(0), W2(1), W3(2), W4(3)
+3. 今日の曜日（火=tue, 木=thu, 土=sat）で `pattern` から記事タイプを取得
+
+例: 2026-02-20（木）→ cycle_start から10日 → 第2週 → W2 → thu = ニュース・レビュー系
+
+**投稿日でない曜日（月水金日）の場合:**
+EDITHからテーマ指定があればそれに従う。なければ「今日は投稿日ではありません」と返す。
+
+#### 2.1b: テーマの具体化
+
+判定された記事タイプに合うテーマを、briefの戦略方針から具体化します。
+
+briefの参照先（記事タイプ別）:
+- **比較・違い系** → `winning_patterns`（実績パターンの再現）+ `content_gaps`
+- **ニュース・レビュー系** → `timely_topics`（urgency: high 優先）+ `ai_updates`
+- **ハウツー・活用事例** → `content_priorities` + `content_gaps`
+- **コンバージョン系** → `content_priorities`（AI研修・助成金関連を優先）
 
 EDITHからテーマ指定がある場合はそれに従います。
 
