@@ -298,12 +298,20 @@ class WordPressPublisher:
         try:
             author_id = self._get_current_user_id()
 
+            # 予約投稿: meta.jsonにscheduled_dateがあればfutureステータスで投稿
+            wp_meta = meta_data.get("wordpress", {})
+            scheduled_date = wp_meta.get("scheduled_date")
+
             post_data = {
                 "title": meta_data.get("title", ""),
                 "slug": meta_data.get("slug", ""),
                 "content": content,
-                "status": "draft",
+                "status": "future" if scheduled_date else "draft",
             }
+
+            if scheduled_date:
+                post_data["date"] = scheduled_date
+                print(f"[WordPress投稿足軽] 予約投稿: {scheduled_date}")
 
             if author_id:
                 post_data["author"] = author_id
@@ -544,7 +552,7 @@ class WordPressPublisher:
                 return
 
             # 新しいIDを生成（既存の最大ID + 1）
-            max_id = max((a.get("id", 0) for a in index.get("articles", [])), default=0)
+            max_id = max((a.get("id") or 0 for a in index.get("articles", [])), default=0)
 
             new_entry = {
                 "id": max_id + 1,
