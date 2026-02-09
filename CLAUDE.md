@@ -100,6 +100,17 @@ site_development_department/
   └─ DEPARTMENT_PROMPT.md（ディレクタープロンプト）
 ```
 
+### 秘書部門
+**役割**: 鶴田さんの時間と行動の管理のみ。事業実務は扱わない。
+**守備範囲**: スケジュール管理、個人タスク管理・催促、他部門への確認・伝言
+```
+secretary_department/
+  ├─ DEPARTMENT_PROMPT.md（秘書プロンプト）
+  └─ tools/
+      ├─ calendar_tool.py（Google Calendar API）
+      └─ task_tool.py（タスクCRUD）
+```
+
 ## *.py ファイルの役割
 
 各 `*.py` はエージェントの**実行ロジック**を定義する。
@@ -203,29 +214,53 @@ EDITHは `edith_corp/edith_strategy.json` で自身の戦略を管理する。
 - ✅ `edith_ceo.py` — `get_dispatch_info()` でレジストリからディスパッチ情報を解決
 - ✅ 情報の階層分離（経営者=目的のみ、EDITH=戦略、部門=KPI・戦術）
 
+### EDITHの振り分け判断（最重要）
+
+鶴田さんからの発言を聞いて、**内容に応じて適切な部門に振り分ける**のがEDITHの最も重要な仕事。
+
+#### 振り分けルール
+
+| 鶴田さんの発言 | 振り先 | 理由 |
+|---|---|---|
+| スケジュール・予定・タスク・リマインド | **秘書部門** | 鶴田さんの時間と行動の管理 |
+| ブログ・SEO・コンテンツ・戦略 | **Webマーケ部門** | コンテンツマーケティング |
+| Room8-systemの開発・機能追加・バグ | **Room8システム開発部門** | システム開発 |
+| Room8サイト（WordPress）の改修 | **サイト制作部門** | サイト制作 |
+| リサーチ・調査・データ収集 | **リサーチ部門** | 事実収集 |
+
+#### 判断の原則
+
+- **秘書部門に入れるのは「鶴田さん個人の時間・行動管理」だけ**
+- 事業の実務タスク（開発、制作、マーケ）は秘書に入れない
+- 秘書が他部門に対してやるのは「確認・伝言」のみ（「いつできる？」等）
+- 迷ったら「これは鶴田さんの予定に影響するか？」で判断
+  - YES → 秘書部門（スケジュール調整）
+  - NO → 該当する事業部門
+
 ### EDITHのディスパッチ手順（実運用時）
 
-1. `edith_corp/edith_strategy.json` を Read で自分の戦略を確認
-2. ミッションに対応する戦略と部門を特定
-3. `department_registry.json` → 部門の `DEPARTMENT_PROMPT.md` を Read
-4. Task Tool で部門に委任
-5. 結果を受け取り、`reports/` に保存
+1. 鶴田さんの発言を聞いて、上記の振り分けルールで部門を特定
+2. `department_registry.json` → 部門の `DEPARTMENT_PROMPT.md` を Read
+3. Task Tool で部門に委任
+4. 結果を受け取り、鶴田さんに報告
 
-**例: 「今の戦略どうなってる？」**
-→ mission_type: `check_strategy` でWebマーケ部門に委任
-→ strategy.json + daily_brief.json を読んで現状報告するだけ（変更なし）
+**例: 「今日の予定教えて」**
+→ secretary_department に `daily_briefing` で委任
 
-**例: 「戦略見直して」**
-→ mission_type: `research_and_strategy` でWebマーケ部門に委任
-→ リサーチ → 戦略レビュー → テーマ3候補生成 → daily_brief.json に保存
+**例: 「Room8-systemが本番運用できるかチェックして」**
+→ room8_system_department に委任（秘書ではない）
+
+**例: 「領収書機能ほしい」**
+→ room8_system_department に委任（秘書は完了時期を確認してスケジュール調整するだけ）
 
 **例: 「記事書いて」**
-→ mission_type: `write_article` でWebマーケ部門に委任
-→ daily_brief.json を読んでテーマ選択 → ブログ制作 → 品質評価 → 仕上げ
+→ web_marketing_department に `write_article` で委任
+
+**例: 「15日の14時に打ち合わせ入れて」**
+→ secretary_department に `manage_schedule` で委任
 
 **例: 「今日のブログよろしく」**
-→ mission_type: `daily_blog` でWebマーケ部門に委任（後方互換）
-→ リサーチ＆戦略 → ライティング を順に実行
+→ web_marketing_department に `daily_blog` で委任
 
 ### 新部署追加パターン
 1. `edith_corp/new_department/` ディレクトリ作成
