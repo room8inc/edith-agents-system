@@ -5,9 +5,9 @@ tasks.json に対する CRUD 操作を提供する。
 秘書エージェントが Bash で実行する。
 
 Usage:
-  python3 task_tool.py list [--status pending] [--category business] [--due today|week|overdue]
-  python3 task_tool.py add "タスクタイトル" [--description "詳細"] [--priority high] [--category business] [--project room8] [--due 2026-02-15]
-  python3 task_tool.py update <id> [--title "新タイトル"] [--status completed] [--priority low] [--due 2026-03-01]
+  python3 task_tool.py list [--status pending] [--category business] [--due today|week|overdue] [--assignee ai] [--urgency now]
+  python3 task_tool.py add "タスクタイトル" [--description "詳細"] [--priority high] [--urgency now] [--assignee tsuruta] [--category business] [--project room8] [--due 2026-02-15]
+  python3 task_tool.py update <id> [--title "新タイトル"] [--status completed] [--priority low] [--urgency anytime] [--assignee outsource] [--due 2026-03-01]
   python3 task_tool.py complete <id>
   python3 task_tool.py delete <id>
 """
@@ -65,6 +65,10 @@ def cmd_list(args) -> dict:
         tasks = [t for t in tasks if t.get("category") == args.category]
     if args.project:
         tasks = [t for t in tasks if t.get("project") == args.project]
+    if args.assignee:
+        tasks = [t for t in tasks if t.get("assignee") == args.assignee]
+    if args.urgency:
+        tasks = [t for t in tasks if t.get("urgency") == args.urgency]
 
     today = date.today()
     if args.due == "today":
@@ -103,6 +107,8 @@ def cmd_add(args) -> dict:
         "description": args.description or "",
         "status": "pending",
         "priority": args.priority or "medium",
+        "urgency": args.urgency or "soon",
+        "assignee": args.assignee or "tsuruta",
         "category": args.category or "business",
         "project": args.project or "",
         "due_date": args.due or None,
@@ -144,6 +150,10 @@ def cmd_update(args) -> dict:
                 task["project"] = args.project
             if args.category:
                 task["category"] = args.category
+            if args.urgency:
+                task["urgency"] = args.urgency
+            if args.assignee:
+                task["assignee"] = args.assignee
             task["updated_at"] = _now_iso()
             _save_tasks(data)
             return {
@@ -201,12 +211,16 @@ def main():
     p_list.add_argument("--category", choices=["business", "personal"])
     p_list.add_argument("--project")
     p_list.add_argument("--due", choices=["today", "week", "overdue"])
+    p_list.add_argument("--assignee", choices=["tsuruta", "ai", "outsource"])
+    p_list.add_argument("--urgency", choices=["now", "soon", "anytime"])
 
     # add
     p_add = subparsers.add_parser("add", help="タスク追加")
     p_add.add_argument("title", help="タスクタイトル")
     p_add.add_argument("--description", "-d", help="詳細")
     p_add.add_argument("--priority", "-p", choices=["high", "medium", "low"])
+    p_add.add_argument("--urgency", "-u", choices=["now", "soon", "anytime"], help="緊急度 (now=今すぐ, soon=近いうち, anytime=いつでも)")
+    p_add.add_argument("--assignee", "-a", choices=["tsuruta", "ai", "outsource"], help="誰がやるか")
     p_add.add_argument("--category", "-c", choices=["business", "personal"])
     p_add.add_argument("--project", help="プロジェクトタグ")
     p_add.add_argument("--due", help="期限 (YYYY-MM-DD)")
@@ -218,6 +232,8 @@ def main():
     p_update.add_argument("--description")
     p_update.add_argument("--status", choices=["pending", "in_progress", "completed", "cancelled"])
     p_update.add_argument("--priority", choices=["high", "medium", "low"])
+    p_update.add_argument("--urgency", choices=["now", "soon", "anytime"])
+    p_update.add_argument("--assignee", choices=["tsuruta", "ai", "outsource"])
     p_update.add_argument("--category", choices=["business", "personal"])
     p_update.add_argument("--project")
     p_update.add_argument("--due", help="期限 (YYYY-MM-DD)")

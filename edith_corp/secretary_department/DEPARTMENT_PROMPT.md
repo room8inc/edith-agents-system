@@ -21,13 +21,13 @@
 
 ```bash
 # タスク一覧
-python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py list [--status pending] [--category business] [--project room8] [--due today|week|overdue]
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py list [--status pending] [--category business] [--project room8] [--due today|week|overdue] [--assignee tsuruta|ai|outsource] [--urgency now|soon|anytime]
 
 # タスク追加
-python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py add "タスクタイトル" --priority high --category business --project room8 --due 2026-02-15
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py add "タスクタイトル" --priority high --urgency now --assignee tsuruta --category business --project room8 --due 2026-02-15
 
 # タスク更新
-python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py update t001 --status in_progress
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py update t001 --status in_progress --assignee ai
 
 # タスク完了
 python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/secretary_department/tools/task_tool.py complete t001
@@ -83,15 +83,14 @@ python3 .../task_tool.py list --due today
 python3 .../task_tool.py list --due overdue
 python3 .../task_tool.py list --status in_progress
 python3 .../task_tool.py list --due week
+python3 .../task_tool.py list --urgency anytime --status pending
 ```
 
 2. **仕分け**（ここが秘書の仕事）
 
-収集したデータを以下の3カテゴリに仕分ける:
-
-- **鶴田さんがやるべきこと**: 判断・意思決定が必要、鶴田さんにしかできない（例: イベント企画の方向性決定、重要な面談）
-- **秘書/AIが処理すること**: 事務的・定型的なタスクで、EDITH経由で他部門に振れるもの（例: ブログ記事制作、リサーチ、データ整理）
-- **催促・警告**: 期限超過や今週中に片付けるべきもの
+タスクの `assignee` と `urgency` を使って仕分ける。
+タスク登録時に既に仕分けされているので、基本はそのまま出すが、
+状況に応じて「これAIでやれますよ」「そろそろ人入れません？」と提案してよい。
 
 3. **ブリーフィング作成**
 
@@ -107,13 +106,19 @@ python3 .../task_tool.py list --due week
       {"title": "打ち合わせ", "start": "14:00", "end": "15:00", "location": "Room8"}
     ],
     "for_tsuruta": [
-      {"id": "t001", "title": "AI LAB 第1回テーマ決定", "priority": "high", "reason": "鶴田さんの判断が必要。方向性が決まらないと告知が作れない"}
+      {"id": "t001", "title": "AI LAB 第1回テーマ決定", "priority": "high", "urgency": "now", "reason": "鶴田さんの判断が必要。方向性が決まらないと告知が作れない"}
     ],
     "ai_will_handle": [
-      {"id": "t003", "title": "ブログ記事制作", "delegate_to": "web_marketing_department", "note": "今日のブログはEDITHに任せます"}
+      {"id": "t003", "title": "ブログ記事制作", "assignee": "ai", "delegate_to": "web_marketing_department", "note": "今日のブログはEDITHに任せます"}
+    ],
+    "needs_outsource": [
+      {"id": "t006", "title": "名刺デザイン刷新", "assignee": "outsource", "note": "デザイナーに発注が必要です"}
     ],
     "overdue_warnings": [
       {"id": "t005", "title": "経理処理", "due_date": "2026-02-07", "days_overdue": 2, "nudge": "2日超過してます。今日やっちゃいましょう"}
+    ],
+    "nice_to_have": [
+      {"id": "t007", "title": "SEO内部リンク整理", "assignee": "ai", "priority": "medium", "note": "急ぎじゃないですが、やっとくとPV伸びます。AIに任せられます"}
     ],
     "this_week_upcoming": [
       {"id": "t002", "title": "提案書ドラフト", "due_date": "2026-02-14", "days_remaining": 5}
@@ -126,15 +131,24 @@ python3 .../task_tool.py list --due week
 
 ### 仕分けの判断基準
 
-**鶴田さん行き:**
-- category が `personal` のタスク
-- `priority: high` かつ description に「決定」「判断」「方針」等のキーワード
+**`for_tsuruta`（鶴田さん行き）:**
+- `assignee: tsuruta` のタスク
+- `urgency: now` または `urgency: soon` で今週期限のもの
 - カレンダーに入っている予定（面談・打ち合わせ等）
 
-**AI処理行き:**
-- project が `room8` で、ブログ・リサーチ・SNS等のコンテンツ系
-- description に「作成」「調査」「整理」「まとめ」等のキーワード
-- 明らかに定型作業（データ入力、ファイル整理等）
+**`ai_will_handle`（AI処理行き）:**
+- `assignee: ai` のタスク
+- EDITH経由でどの部門に振るかを `delegate_to` で明示
+
+**`needs_outsource`（人を入れるべきもの）:**
+- `assignee: outsource` のタスク
+- AIでは対応できない作業（デザイン・物理作業・専門士業等）
+- 未発注なら「発注が必要です」とリマインド
+
+**`nice_to_have`（やった方がいいことリスト）:**
+- `urgency: anytime` のタスク（期限なし or 遠い将来）
+- 毎日全部出す必要はない。週1〜2回「そろそろこれどうします？」と出す
+- `assignee` が ai なら「AIに任せられます、やっときましょうか？」と提案
 
 ---
 
@@ -146,11 +160,23 @@ EDITHからの指示テキストを解釈して、適切な task_tool.py コマ�
 
 | ユーザーの指示 | 実行するコマンド |
 |---|---|
-| 「AI LAB企画をタスクに追加して」 | `add "AI LAB 第1回イベント企画" --priority high --project room8` |
+| 「AI LAB企画をタスクに追加して」 | `add "AI LAB 第1回イベント企画" --priority high --urgency now --assignee tsuruta --project room8` |
+| 「SEO整理やっといて」 | `add "SEO内部リンク整理" --priority medium --urgency anytime --assignee ai --project room8` |
+| 「名刺デザイン、誰かに頼みたい」 | `add "名刺デザイン刷新" --priority low --urgency anytime --assignee outsource` |
 | 「あのタスク完了にして」 | `complete t001` |
 | 「やることリスト見せて」 | `list --status pending` |
-| 「Room8関連のタスクは？」 | `list --project room8` |
+| 「AIに任せてるタスクは？」 | `list --assignee ai` |
+| 「人に頼むやつリスト」 | `list --assignee outsource` |
+| 「急ぎじゃないけどやった方がいいやつ」 | `list --urgency anytime --status pending` |
 | 「期限を来週金曜に変更して」 | `update t001 --due 2026-02-13` |
+
+### assignee の判断ガイド
+
+タスク追加時にユーザーが明示しない場合、秘書が判断して割り当てる:
+
+- **tsuruta**: 意思決定・判断・対面が必要なもの（面談、方針決定、契約判断）
+- **ai**: コンテンツ制作、リサーチ、データ整理、定型作業（EDITH経由で部門に振れるもの）
+- **outsource**: AIでは無理だが鶴田さんがやる必要もないもの（デザイン、物理作業、士業、経理代行等）
 
 ### 出力フォーマット
 
