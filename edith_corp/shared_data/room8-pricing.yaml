@@ -1,0 +1,98 @@
+# Room8 料金データ（Single Source of Truth）
+# 更新日: 2026-02-08
+# ソース: room8-renewal/page-templates/template-coworking.php
+# ※ 料金は全て税込
+
+dropin:
+  description: "会員登録不要。アプリでチェックイン・チェックアウト。初回のみ来店予約が必要。"
+  pricing:
+    1h: 420
+    2h: 840
+    3h: 1260
+    4h: 1500   # お得
+    5h: 1920
+    1day: 2200  # 上限
+
+monthly:
+  description: "全プラン共通: Wi-Fi・電源・フリードリンク付き。選んだ時間帯なら何度でも通い放題。"
+  # ワークスペース = base、シェアオフィス = base + 3,300円
+  share_office_addon: 3300
+  plans:
+    weekend:
+      name: ホリデー
+      time: "土日祝 9:00-17:00"
+      workspace: 6600
+      share_office: 9900
+    night:
+      name: ナイト
+      time: "平日 17:00-22:00"
+      workspace: 6600
+      share_office: 9900
+    night-weekend:
+      name: "ナイト&ホリデー"
+      time: "平日夜 + 土日祝"
+      workspace: 9900
+      share_office: 13200
+    day:
+      name: デイタイム
+      time: "平日 9:00-17:00"
+      workspace: 11000
+      share_office: 14300
+    weekday:
+      name: ウィークデイ
+      time: "平日 9:00-22:00"
+      workspace: 13200
+      share_office: 16500
+    regular:
+      name: レギュラー
+      time: "全営業時間"
+      workspace: 16500
+      share_office: 19800
+
+  discounts:
+    long_term_1year: "20%OFF"
+    annual_prepaid: "30%OFF"
+    group_2nd_person: "50%OFF"
+
+  share_office_includes:
+    - "住所利用（名刺・HP掲載OK）"
+    - "郵便物受取"
+    - "来客OK（1日2hまで）"
+    - "会議室 月4h無料"
+    - "コピー機・独自ドメイン・メールアドレス"
+
+options:
+  corporate_registration: 5500   # 法人登記
+  24h_access: 5500               # 24時間利用
+  locker_large: 4950             # ロッカー（大）
+  locker_small: 2750             # ロッカー（小）
+  printer_unlimited: 1100        # プリンター使い放題
+
+startup_pack:
+  name: "起業家パック"
+  monthly: 55000
+  long_term: 44000
+  includes:
+    - "レギュラー"
+    - "住所利用"
+    - "24時間利用"
+    - "法人登記"
+    - "ロッカー"
+    - "Webサイト制作・管理"
+
+meeting_room:
+  capacity: "8〜10名"
+  equipment: "Wi-Fi・プロジェクター・ホワイトボード付き"
+  member: 1100          # 円/時間
+  non_member: 2200      # 円/時間
+  share_office_free: "月4hまで無料"
+  min_booking: "最低1時間（30分単位）"
+  payment: "クレジットカードのみ"
+  options:
+    monitor: 550          # 円/時間
+    recording_set: 2200   # 円/時間（ATEM Mini・SSL2・マイク・デジタル一眼）
+
+ai_lab:
+  visitor: 1000          # 円/回
+  member: 5500           # 円/月
+  tool_discount: 1000    # ツール共有で月額から割引

@@ -26,6 +26,7 @@ EDITHから渡される `mission_type` に応じて実行内容が決まりま�
 | `research_and_strategy` | ミッション1のみ実行 |
 | `write_article` | ミッション2のみ実行 |
 | `daily_blog` | ミッション1 → ミッション2 を順に実行（後方互換） |
+| `manage_featured` | トップページの注目記事を選定・入れ替え |
 
 ---
 
@@ -368,6 +369,94 @@ Task Tool (subagent_type: "general-purpose") で以下を渡す:
 渡された記事をそのまま使い、Step 2（SEO）もスキップし、Step 3（画像）から開始します。
 → つまり `revision_instructions` に「この記事をそのまま使え。フェーズBのみ実行」と
 明記してください。`original_article` に最終版記事を、`seo_data` に SEO結果を渡します。
+
+---
+
+## 注目記事管理ミッション（manage_featured）
+
+トップページの「注目」セクションに表示する記事を選定・入れ替えます。
+サイトの顔になる部分なので、**戦略に沿った記事を前面に出す**のが目的です。
+
+### Step 1: 現状把握
+
+#### 1a: 現在の注目記事を取得
+
+```bash
+python3 -c "
+from pathlib import Path; import sys
+sys.path.insert(0, str(Path('/Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/wordpress_posting')))
+from wordpress_publisher import WordPressPublisher
+import json
+wp = WordPressPublisher()
+result = wp.get_sticky_posts()
+print(json.dumps(result, ensure_ascii=False, indent=2))
+"
+```
+
+#### 1b: パフォーマンスデータを取得
+
+```bash
+# Search Console（検索パフォーマンス）
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py search_console
+
+# GA4（アクセスデータ）
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py ga4
+
+# 既存記事一覧
+python3 /Users/tsuruta/Documents/000AGENTS/edith_corp/research_department/run_research_tools.py existing_articles
+```
+
+### Step 2: 選定判断
+
+strategy.json とパフォーマンスデータを元に、注目に出すべき記事を**3〜5件**選びます。
+
+**選定基準（優先度順）:**
+1. **戦略的に推したい記事** — AI LAB誘導、コワーキング集客など事業目標に直結するもの
+2. **検索パフォーマンスが伸びている記事** — 表示回数・クリック数が上昇中のもの
+3. **鮮度** — 直近1〜2週間の新着記事は優先的に注目へ
+4. **コンテンツの多様性** — 同じカテゴリばかりにならないようにバランスを取る
+5. **ターゲット層への幅広い価値** — このメディアは「AIメディア」ではなく「小規模事業者向けメディア」。AI記事が中心だが、経営・財務・働き方など事業者に役立つ記事も1枠は入れる。AI一色だとサイトの幅が狭く見える
+
+**除外基準:**
+- 公開から3ヶ月以上経過し、検索パフォーマンスも横ばいの記事
+- ニュース系記事で情報が古くなったもの
+- PVが極端に低い記事
+
+### Step 3: 入れ替え実行
+
+選定した記事のWordPress投稿IDを使って注目記事を入れ替えます。
+
+```bash
+python3 -c "
+from pathlib import Path; import sys
+sys.path.insert(0, str(Path('/Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/wordpress_posting')))
+from wordpress_publisher import WordPressPublisher
+import json
+wp = WordPressPublisher()
+# 選定した記事IDのリストに入れ替え
+result = wp.replace_sticky_posts([投稿ID1, 投稿ID2, 投稿ID3])
+print(json.dumps(result, ensure_ascii=False, indent=2))
+"
+```
+
+### 出力フォーマット
+
+```json
+{
+  "status": "success",
+  "mission_type": "manage_featured",
+  "previous_featured": [
+    {"id": 123, "title": "旧記事タイトル"}
+  ],
+  "new_featured": [
+    {"id": 456, "title": "新記事タイトル", "reason": "AI LAB誘導記事、検索流入増加中"}
+  ],
+  "changes_made": {
+    "added": [456, 789],
+    "removed": [123]
+  }
+}
+```
 
 ---
 

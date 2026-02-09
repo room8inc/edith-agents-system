@@ -309,6 +309,11 @@ class WordPressPublisher:
                 "status": "future" if scheduled_date else "draft",
             }
 
+            # 注目記事（先頭固定）
+            if wp_meta.get("sticky") or meta_data.get("sticky"):
+                post_data["sticky"] = True
+                print(f"[WordPress投稿足軽] 注目記事に設定")
+
             if scheduled_date:
                 post_data["date"] = scheduled_date
                 print(f"[WordPress投稿足軽] 予約投稿: {scheduled_date}")
@@ -512,6 +517,100 @@ class WordPressPublisher:
         credentials = f"{self.wp_username}:{self.wp_app_password}"
         encoded_credentials = base64.b64encode(credentials.encode()).decode()
         return f"Basic {encoded_credentials}"
+
+    def get_sticky_posts(self) -> Dict[str, Any]:
+        """現在の注目記事（先頭固定）一覧を取得"""
+
+        if not self.wp_username or not self.wp_app_password:
+            return {"success": False, "error": "WordPress認証情報が未設定"}
+
+        try:
+            response = requests.get(
+                f"{self.wp_api_base}/posts",
+                headers={'Authorization': self._get_auth_header()},
+                params={"sticky": True, "per_page": 20},
+                timeout=15
+            )
+
+            if response.status_code == 200:
+                posts = response.json()
+                return {
+                    "success": True,
+                    "count": len(posts),
+                    "posts": [
+                        {
+                            "id": p["id"],
+                            "title": p["title"]["rendered"],
+                            "url": p["link"],
+                            "date": p["date"],
+                            "status": p["status"],
+                        }
+                        for p in posts
+                    ]
+                }
+            else:
+                return {"success": False, "error": f"取得失敗: {response.status_code}"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def update_sticky(self, post_id: int, sticky: bool) -> Dict[str, Any]:
+        """記事の注目（先頭固定）フラグを変更"""
+
+        if not self.wp_username or not self.wp_app_password:
+            return {"success": False, "error": "WordPress認証情報が未設定"}
+
+        try:
+            response = requests.post(
+                f"{self.wp_api_base}/posts/{post_id}",
+                headers={'Authorization': self._get_auth_header()},
+                json={"sticky": sticky},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                post = response.json()
+                action = "注目に追加" if sticky else "注目から削除"
+                print(f"[WordPress投稿足軽] {action}: {post['title']['rendered']} (ID: {post_id})")
+                return {
+                    "success": True,
+                    "post_id": post_id,
+                    "sticky": sticky,
+                    "title": post["title"]["rendered"],
+                }
+            else:
+                return {"success": False, "error": f"更新失敗: {response.status_code}"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def replace_sticky_posts(self, new_post_ids: List[int]) -> Dict[str, Any]:
+        """注目記事を一括入れ替え（旧い注目を全解除 → 新しいリストを設定）"""
+
+        results = {"removed": [], "added": [], "errors": []}
+
+        # 現在の注目記事を取得して全解除
+        current = self.get_sticky_posts()
+        if current["success"]:
+            for post in current["posts"]:
+                if post["id"] not in new_post_ids:
+                    res = self.update_sticky(post["id"], False)
+                    if res["success"]:
+                        results["removed"].append(post["id"])
+                    else:
+                        results["errors"].append(f"解除失敗 ID:{post['id']}")
+
+        # 新しい注目記事を設定
+        for pid in new_post_ids:
+            res = self.update_sticky(pid, True)
+            if res["success"]:
+                results["added"].append(pid)
+            else:
+                results["errors"].append(f"設定失敗 ID:{pid}")
+
+        results["success"] = len(results["errors"]) == 0
+        print(f"[WordPress投稿足軽] 注目記事入れ替え完了: 追加{len(results['added'])}件, 削除{len(results['removed'])}件")
+        return results
 
     def _save_wordpress_data(self, article_dir: str, post_data: Dict[str, Any], images_data: Dict[str, Any]):
         """WordPress投稿データの保存"""

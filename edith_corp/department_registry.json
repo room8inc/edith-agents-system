@@ -3,7 +3,7 @@
     "name": "Webマーケティング部門",
     "prompt_file": "web_marketing_department/DEPARTMENT_PROMPT.md",
     "root_path": "web_marketing_department/",
-    "mission_types": ["check_strategy", "daily_blog", "research_and_strategy", "write_article", "content_review", "strategy_review"],
+    "mission_types": ["check_strategy", "daily_blog", "research_and_strategy", "write_article", "content_review", "strategy_review", "manage_featured"],
     "enabled": true
   },
   "blog_department": {
@@ -36,5 +36,14 @@
     "mission_types": ["theme_update", "page_content", "site_review", "wp_config"],
     "enabled": true,
     "note": "EDITHから直接呼ばれる。Room8サイト(room8-renewal テーマ)の開発・改善を統括"
+  },
+  "room8_system_department": {
+    "name": "Room8システム開発部門",
+    "prompt_file": "room8_system_department/DEPARTMENT_PROMPT.md",
+    "root_path": "room8_system_department/",
+    "project_path": "/Users/tsuruta/Documents/00_RnD/Room8",
+    "mission_types": ["system_dev", "line_bot", "stripe_integration", "api_development", "db_migration"],
+    "enabled": true,
+    "note": "Room8 Next.jsアプリ(room8-system)の開発・保守。Stripe決済・LINE Bot・Google Calendar連携"
   }
 }
