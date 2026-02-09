@@ -11,6 +11,9 @@ BLOG_ARTICLES_DIR = OUTPUT_ROOT / "blog" / "articles"
 BLOG_ARTICLES_INDEX = OUTPUT_ROOT / "blog" / "articles_index.json"
 REPORTS_DIR = OUTPUT_ROOT / "reports"
 BRIEFS_DIR = OUTPUT_ROOT / "briefs"
+SECRETARY_DIR = OUTPUT_ROOT / "secretary"
+SECRETARY_TASKS_FILE = SECRETARY_DIR / "tasks.json"
+SECRETARY_MEMOS_DIR = SECRETARY_DIR / "memos"
 
 
 def ensure_dirs():
@@ -18,3 +21,5 @@ def ensure_dirs():
     BLOG_ARTICLES_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     BRIEFS_DIR.mkdir(parents=True, exist_ok=True)
+    SECRETARY_DIR.mkdir(parents=True, exist_ok=True)
+    SECRETARY_MEMOS_DIR.mkdir(parents=True, exist_ok=True)

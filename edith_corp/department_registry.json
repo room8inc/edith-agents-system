@@ -45,5 +45,13 @@
     "mission_types": ["system_dev", "line_bot", "stripe_integration", "api_development", "db_migration"],
     "enabled": true,
     "note": "Room8 Next.jsアプリ(room8-system)の開発・保守。Stripe決済・LINE Bot・Google Calendar連携"
+  },
+  "secretary_department": {
+    "name": "秘書部門",
+    "prompt_file": "secretary_department/DEPARTMENT_PROMPT.md",
+    "root_path": "secretary_department/",
+    "mission_types": ["daily_briefing", "manage_task", "manage_schedule", "memo"],
+    "enabled": true,
+    "note": "鶴田さんのタスク・スケジュール・メモを一元管理。EDITHから直接呼ばれる"
   }
 }

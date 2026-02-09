@@ -1,0 +1,6 @@
+{
+  "calendar_id": "primary",
+  "credentials_path": "/Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/search_console/credentials/claude-agent-486408-2670454f8c9f.json",
+  "timezone": "Asia/Tokyo",
+  "note": "calendar_id を鶴田さんのGoogleカレンダーIDに変更すること。サービスアカウント (claude-agent) にカレンダーの編集権限を共有する必要あり。"
+}
