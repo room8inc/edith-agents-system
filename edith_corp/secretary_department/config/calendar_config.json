@@ -1,6 +1,22 @@
 {
-  "calendar_id": "primary",
+  "calendars": {
+    "main": {
+      "id": "k_tsuruta@room8.co.jp",
+      "name": "メイン",
+      "tag": "[メイン]"
+    },
+"meeting_room": {
+      "id": "c_f1qoqc8l3l6nictvb8cfmiunj8@group.calendar.google.com",
+      "name": "会議室予約",
+      "tag": "[会議室]"
+    },
+    "appointments": {
+      "id": "c_1a266bc39c9e753155199641326049a47a415004a363588d7c310c00386cee38@group.calendar.google.com",
+      "name": "打ち合わせ",
+      "tag": "[打合せ]"
+    }
+  },
   "credentials_path": "/Users/tsuruta/Documents/000AGENTS/edith_corp/blog_department/search_console/credentials/claude-agent-486408-2670454f8c9f.json",
-  "timezone": "Asia/Tokyo",
-  "note": "calendar_id を鶴田さんのGoogleカレンダーIDに変更すること。サービスアカウント (claude-agent) にカレンダーの編集権限を共有する必要あり。"
+  "delegate_to": "k_tsuruta@room8.co.jp",
+  "timezone": "Asia/Tokyo"
 }

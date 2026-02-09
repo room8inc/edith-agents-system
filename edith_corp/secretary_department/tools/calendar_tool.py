@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """
-秘書部門 - Google Calendar ツール
+秘書部門 - Google Calendar ツール（複数カレンダー対応）
 Google Calendar API を使って予定の取得・作成・削除を行う。
-秘書エージェントが Bash で実行する。
 
 認証: Search Console / GA4 と同じサービスアカウントを使用。
 カレンダーオーナーがサービスアカウントのメールアドレスに
 カレンダー共有（編集権限）を設定する必要がある。
 
 Usage:
-  python3 calendar_tool.py list --from 2026-02-09 --to 2026-02-10
-  python3 calendar_tool.py list --from today --to tomorrow
-  python3 calendar_tool.py list --from today --to week
-  python3 calendar_tool.py create --title "打ち合わせ" --date 2026-02-15 --start 14:00 --end 15:00 [--description "議題: ..."]
-  python3 calendar_tool.py delete --event-id <event_id>
+  python3 calendar_tool.py list --from today --to today [--calendar all|appointments|meeting_room|initial_consultation]
+  python3 calendar_tool.py list --from 2026-02-09 --to 2026-02-15
+  python3 calendar_tool.py create --calendar appointments --title "打ち合わせ" --date 2026-02-15 --start 14:00 --end 15:00
+  python3 calendar_tool.py delete --calendar appointments --event-id <event_id>
 """
 
 import sys
@@ -46,7 +44,7 @@ def _load_config() -> dict:
         except (json.JSONDecodeError, OSError):
             pass
     return {
-        "calendar_id": "primary",
+        "calendars": {},
         "credentials_path": str(_CREDENTIALS_PATH),
         "timezone": "Asia/Tokyo",
     }
@@ -60,7 +58,7 @@ def _get_calendar_service():
     except ImportError:
         print(json.dumps({
             "status": "error",
-            "error": "google-api-python-client がインストールされていません。pip install google-api-python-client google-auth で追加してください。",
+            "error": "google-api-python-client がインストールされていません。",
         }, ensure_ascii=False, indent=2))
         sys.exit(1)
 
@@ -78,6 +76,10 @@ def _get_calendar_service():
         creds_path, scopes=SCOPES
     )
 
+    # ドメイン全体の委任: 鶴田さんとしてカレンダーにアクセス
+    delegate_to = config.get("delegate_to", "k_tsuruta@room8.co.jp")
+    credentials = credentials.with_subject(delegate_to)
+
     service = build("calendar", "v3", credentials=credentials)
     return service, config
 
@@ -94,65 +96,110 @@ def _resolve_date(s: str) -> str:
     return s
 
 
+def _get_calendar_ids(config: dict, calendar_name: str) -> list:
+    """指定されたカレンダー名からカレンダーID(s)を返す"""
+    calendars = config.get("calendars", {})
+
+    if calendar_name == "all":
+        return [
+            {"key": key, "id": cal["id"], "name": cal["name"], "tag": cal.get("tag", "")}
+            for key, cal in calendars.items()
+        ]
+
+    if calendar_name in calendars:
+        cal = calendars[calendar_name]
+        return [{"key": calendar_name, "id": cal["id"], "name": cal["name"], "tag": cal.get("tag", "")}]
+
+    return []
+
+
 def cmd_list(args) -> dict:
-    """期間内の予定一覧を取得"""
+    """期間内の予定一覧を取得（複数カレンダー対応）"""
     service, config = _get_calendar_service()
-    calendar_id = config.get("calendar_id", "primary")
     timezone = config.get("timezone", "Asia/Tokyo")
+    calendar_name = args.calendar or "all"
+
+    targets = _get_calendar_ids(config, calendar_name)
+    if not targets:
+        return {
+            "status": "error",
+            "error": f"カレンダー '{calendar_name}' が見つかりません。利用可能: {list(config.get('calendars', {}).keys())}",
+        }
 
     date_from = _resolve_date(args.date_from)
     date_to = _resolve_date(args.date_to)
 
-    # RFC3339 形式に変換（日付のみの場合は時刻を追加）
     time_min = f"{date_from}T00:00:00+09:00"
     time_max = f"{date_to}T23:59:59+09:00"
 
-    try:
-        events_result = service.events().list(
-            calendarId=calendar_id,
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy="startTime",
-            timeZone=timezone,
-        ).execute()
+    all_events = []
+    errors = []
 
-        events = events_result.get("items", [])
+    for target in targets:
+        try:
+            events_result = service.events().list(
+                calendarId=target["id"],
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+                timeZone=timezone,
+            ).execute()
 
-        formatted = []
-        for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
-            end = event["end"].get("dateTime", event["end"].get("date"))
-            formatted.append({
-                "id": event["id"],
-                "title": event.get("summary", "(無題)"),
-                "start": start,
-                "end": end,
-                "description": event.get("description", ""),
-                "location": event.get("location", ""),
-                "all_day": "date" in event["start"],
-            })
+            for event in events_result.get("items", []):
+                start = event["start"].get("dateTime", event["start"].get("date"))
+                end = event["end"].get("dateTime", event["end"].get("date"))
+                all_events.append({
+                    "id": event["id"],
+                    "calendar": target["name"],
+                    "calendar_key": target["key"],
+                    "tag": target["tag"],
+                    "title": f"{target['tag']} {event.get('summary', '(無題)')}".strip(),
+                    "original_title": event.get("summary", "(無題)"),
+                    "start": start,
+                    "end": end,
+                    "description": event.get("description", ""),
+                    "location": event.get("location", ""),
+                    "all_day": "date" in event["start"],
+                })
+        except Exception as e:
+            errors.append({"calendar": target["name"], "error": str(e)})
 
-        return {
-            "status": "success",
-            "events": formatted,
-            "count": len(formatted),
-            "period": {"from": date_from, "to": date_to},
-        }
+    # 開始時刻でソート
+    all_events.sort(key=lambda e: e["start"])
 
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "events": [],
-        }
+    result = {
+        "status": "success",
+        "events": all_events,
+        "count": len(all_events),
+        "period": {"from": date_from, "to": date_to},
+        "calendars_queried": [t["name"] for t in targets],
+    }
+    if errors:
+        result["errors"] = errors
+    return result
 
 
 def cmd_create(args) -> dict:
     """予定を作成"""
     service, config = _get_calendar_service()
-    calendar_id = config.get("calendar_id", "primary")
     timezone = config.get("timezone", "Asia/Tokyo")
+    calendar_name = args.calendar
+
+    if not calendar_name:
+        return {
+            "status": "error",
+            "error": "--calendar を指定してください（appointments / meeting_room / initial_consultation）",
+        }
+
+    targets = _get_calendar_ids(config, calendar_name)
+    if not targets:
+        return {
+            "status": "error",
+            "error": f"カレンダー '{calendar_name}' が見つかりません。",
+        }
+
+    target = targets[0]
 
     event_body = {
         "summary": args.title,
@@ -165,16 +212,14 @@ def cmd_create(args) -> dict:
         event_body["location"] = args.location
 
     if args.all_day:
-        # 終日イベント
         event_body["start"] = {"date": args.date}
         end_date = args.end_date or args.date
         event_body["end"] = {"date": end_date}
     else:
-        # 時間指定イベント
         if not args.start or not args.end:
             return {
                 "status": "error",
-                "error": "--start と --end を指定してください（例: --start 14:00 --end 15:00）。終日の場合は --all-day を使用。",
+                "error": "--start と --end を指定してください。終日の場合は --all-day を使用。",
             }
         event_body["start"] = {
             "dateTime": f"{args.date}T{args.start}:00+09:00",
@@ -187,13 +232,14 @@ def cmd_create(args) -> dict:
 
     try:
         event = service.events().insert(
-            calendarId=calendar_id,
+            calendarId=target["id"],
             body=event_body,
         ).execute()
 
         return {
             "status": "success",
             "action": "created",
+            "calendar": target["name"],
             "event": {
                 "id": event["id"],
                 "title": event.get("summary"),
@@ -213,17 +259,33 @@ def cmd_create(args) -> dict:
 def cmd_delete(args) -> dict:
     """予定を削除"""
     service, config = _get_calendar_service()
-    calendar_id = config.get("calendar_id", "primary")
+    calendar_name = args.calendar
+
+    if not calendar_name:
+        return {
+            "status": "error",
+            "error": "--calendar を指定してください",
+        }
+
+    targets = _get_calendar_ids(config, calendar_name)
+    if not targets:
+        return {
+            "status": "error",
+            "error": f"カレンダー '{calendar_name}' が見つかりません。",
+        }
+
+    target = targets[0]
 
     try:
         service.events().delete(
-            calendarId=calendar_id,
+            calendarId=target["id"],
             eventId=args.event_id,
         ).execute()
 
         return {
             "status": "success",
             "action": "deleted",
+            "calendar": target["name"],
             "deleted_event_id": args.event_id,
         }
 
@@ -242,9 +304,11 @@ def main():
     p_list = subparsers.add_parser("list", help="予定一覧")
     p_list.add_argument("--from", dest="date_from", required=True, help="開始日 (YYYY-MM-DD or today/tomorrow)")
     p_list.add_argument("--to", dest="date_to", required=True, help="終了日 (YYYY-MM-DD or today/tomorrow/week)")
+    p_list.add_argument("--calendar", default="all", help="カレンダー名 (all/appointments/meeting_room/initial_consultation)")
 
     # create
     p_create = subparsers.add_parser("create", help="予定作成")
+    p_create.add_argument("--calendar", required=True, help="カレンダー名")
     p_create.add_argument("--title", required=True, help="予定タイトル")
     p_create.add_argument("--date", required=True, help="日付 (YYYY-MM-DD)")
     p_create.add_argument("--start", help="開始時刻 (HH:MM)")
@@ -252,10 +316,11 @@ def main():
     p_create.add_argument("--description", help="詳細")
     p_create.add_argument("--location", help="場所")
     p_create.add_argument("--all-day", dest="all_day", action="store_true", help="終日イベント")
-    p_create.add_argument("--end-date", dest="end_date", help="終了日 (終日イベント用、YYYY-MM-DD)")
+    p_create.add_argument("--end-date", dest="end_date", help="終了日 (終日イベント用)")
 
     # delete
     p_delete = subparsers.add_parser("delete", help="予定削除")
+    p_delete.add_argument("--calendar", required=True, help="カレンダー名")
     p_delete.add_argument("--event-id", dest="event_id", required=True, help="イベントID")
 
     args = parser.parse_args()
