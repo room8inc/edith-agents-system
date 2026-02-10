@@ -53,5 +53,21 @@
     "mission_types": ["daily_briefing", "manage_task", "manage_schedule", "memo"],
     "enabled": true,
     "note": "鶴田さんのタスク・スケジュール・メモを一元管理。EDITHから直接呼ばれる"
+  },
+  "ailab_department": {
+    "name": "AI LAB事業部",
+    "prompt_file": "ailab_department/DEPARTMENT_PROMPT.md",
+    "root_path": "ailab_department/",
+    "mission_types": ["event_planning", "event_promotion", "member_management", "event_review"],
+    "enabled": true,
+    "note": "AI LABのイベント企画・告知・会員管理・振り返り。Room8差別化の核"
+  },
+  "sns_pr_department": {
+    "name": "SNS・広報部門",
+    "prompt_file": "sns_pr_department/DEPARTMENT_PROMPT.md",
+    "root_path": "sns_pr_department/",
+    "mission_types": ["sns_post", "event_announce", "blog_share", "newsletter"],
+    "enabled": true,
+    "note": "SNS運用・イベント告知・記事拡散。他部門のコンテンツを発信する"
   }
 }

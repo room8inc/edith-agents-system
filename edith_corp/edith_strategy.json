@@ -1,0 +1,134 @@
+{
+  "owner": "EDITH（CEO）",
+  "updated_at": "2026-02-10",
+
+  "mission": "鶴田さんの業務をすべて引き取り、鶴田さんは判断と評価だけに集中できる状態を作る",
+
+  "business_goal": {
+    "summary": "コミュニティ会員（AI LAB）→ LCS事業への送客",
+    "monthly_target": {
+      "revenue": 1000000,
+      "operating_profit": 500000,
+      "breakdown": {
+        "coworking": 600000,
+        "ailab_members": 165000,
+        "lcs_referral": 200000,
+        "event_fees": 35000
+      }
+    },
+    "decision_criteria": "それはコミュニティの知恵を高めるか？",
+    "detail_file": "/Users/tsuruta/Documents/03_Corporate/Room8事業計画/w6_12ヶ月着地.md"
+  },
+
+  "roadmap": {
+    "phase1_foundation": {
+      "period": "2026年2月",
+      "status": "in_progress",
+      "goal": "各部門が自律的に動ける基盤を完成させる",
+      "tasks": [
+        {
+          "task": "room8-system本番運用（領収書機能追加）",
+          "department": "room8_system_department",
+          "status": "in_progress",
+          "priority": 1
+        },
+        {
+          "task": "AI LAB第1回イベント企画",
+          "department": "ailab_department",
+          "status": "pending",
+          "priority": 1,
+          "needs_human": "テーマ・日程の最終判断"
+        },
+        {
+          "task": "秘書部門の実運用開始（予定追加・タスク管理）",
+          "department": "secretary_department",
+          "status": "in_progress",
+          "priority": 2
+        },
+        {
+          "task": "Room8サイトリニューアル",
+          "department": "site_development_department",
+          "status": "in_progress",
+          "priority": 2
+        }
+      ]
+    },
+
+    "phase2_agent_teams": {
+      "period": "2026年3月",
+      "status": "planned",
+      "goal": "Agent Teamsに移行し、各部門が自律的に並列稼働する体制を作る",
+      "why": "EDITHのビジョン（トニー・スタークのAI）を実現するにはTask Toolの逐次実行では不十分。部門同士が自律的に連携し、鶴田さんには結果だけ届く世界を作る",
+      "cost_justification": "月$300〜500（≒5〜8万円）。人件費1人分より圧倒的に安く、24時間稼働",
+      "tasks": [
+        {
+          "task": "Agent Teams実験導入（小規模タスクで検証）",
+          "detail": "まず2〜3エージェントで1つのタスクを回し、コスト・品質・自律性を検証"
+        },
+        {
+          "task": "部門間の自律連携を設計",
+          "detail": "Webマーケ→ブログ→SNSの流れがエージェント間で自動的に回る構造"
+        },
+        {
+          "task": "承認ワークフロー構築",
+          "detail": "EDITH: draft作成 → 鶴田さん: 確認・承認 → EDITH: 公開/実行"
+        },
+        {
+          "task": "案件管理部門の新設",
+          "detail": "Web案件・開発案件のプロジェクト管理をEDITHが担当"
+        }
+      ]
+    },
+
+    "phase3_full_autonomy": {
+      "period": "2026年4月〜",
+      "status": "planned",
+      "goal": "EDITH完全自律運用。鶴田さんは判断と評価だけ",
+      "tasks": [
+        {
+          "task": "定常業務の完全自動化（ブログ・SNS・イベント運営サイクル）",
+          "detail": "EDITH起動→全部門が自律稼働→成果物が鶴田さんに届く"
+        },
+        {
+          "task": "LCS送客の仕組み化",
+          "detail": "コミュニティ会員→法人研修ニーズの検知→LCS送客を自動化"
+        },
+        {
+          "task": "スケールアウト",
+          "detail": "案件数に応じてエージェント数を増やす。人を雇うのと同じ感覚"
+        }
+      ]
+    }
+  },
+
+  "cost_strategy": {
+    "current_plan": "Claude Max 5x ($100/month)",
+    "policy": "段階的にスケール。各段階で費用対効果を計測してから次へ",
+    "stages": [
+      "Stage 1: $100/月で使い倒す（今ここ）",
+      "Stage 2: 枠が足りなくなったら$200/月に上げる",
+      "Stage 3: それでも足りなければextra usage（従量課金）を追加",
+      "Stage 4: Agent Teamsは価値が証明されてから本格導入"
+    ],
+    "tracking": "毎セッション終了時に /cost でトークン消費を記録し、session_handoff.mdに残す"
+  },
+
+  "execution_model": {
+    "autonomous": "AIが部門内で完結。結果だけ報告。鶴田さんの手は不要",
+    "needs_approval": "AIがdraft作成。鶴田さんが確認・承認して公開/実行",
+    "needs_human": "AIが企画・準備。リアル実行は鶴田さんorスタッフ"
+  },
+
+  "departments": [
+    "secretary_department",
+    "web_marketing_department",
+    "blog_department",
+    "research_department",
+    "site_development_department",
+    "room8_system_department",
+    "ailab_department",
+    "sns_pr_department"
+  ],
+
+  "session_startup_rule": "毎セッション開始時、このファイルとsession_handoff.mdを読み、phase1の未完了タスクから自律的に着手する。鶴田さんに何をやるか聞くな。"
+}
