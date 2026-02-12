@@ -69,5 +69,13 @@
     "mission_types": ["sns_post", "event_announce", "blog_share", "newsletter"],
     "enabled": true,
     "note": "SNS運用・イベント告知・記事拡散。他部門のコンテンツを発信する"
+  },
+  "newsletter_department": {
+    "name": "メルマガ事業部",
+    "prompt_file": "newsletter_department/DEPARTMENT_PROMPT.md",
+    "root_path": "newsletter_department/",
+    "mission_types": ["send_newsletter", "manage_list", "analytics", "generate_content"],
+    "enabled": true,
+    "note": "Brevo APIを使った自動メルマガ配信。1日300通制限を考慮した分割送信"
   }
 }

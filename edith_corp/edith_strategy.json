@@ -127,7 +127,8 @@
     "site_development_department",
     "room8_system_department",
     "ailab_department",
-    "sns_pr_department"
+    "sns_pr_department",
+    "newsletter_department"
   ],
 
   "session_startup_rule": "毎セッション開始時、このファイルとsession_handoff.mdを読み、phase1の未完了タスクから自律的に着手する。鶴田さんに何をやるか聞くな。"

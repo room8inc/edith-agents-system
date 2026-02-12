@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            padding-left: 12px;
+        }
+        .event-box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .event-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .event-detail {
+            font-size: 14px;
+            color: #666;
+            margin: 5px 0;
+        }
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background: #5568d3;
+        }
+        .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Room8 Newsletter</h1>
+            <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">春日井勝川のコワーキングスペース</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                <p>{{ contact.LASTNAME }} {{ contact.FIRSTNAME }}様</p>
+                <p>いつもRoom8をご利用いただき、ありがとうございます。<br>
+                今月のお知らせをお届けします。</p>
+            </div>
+
+            <div class="section">
+                <h2>📅 今月のAI LABイベント</h2>
+                <div class="event-box">
+                    <div class="event-title">【第3回】ChatGPT活用ワークショップ</div>
+                    <div class="event-detail">📅 日時：2月20日（木）14:00〜16:00</div>
+                    <div class="event-detail">📍 場所：Room8 コワーキングスペース</div>
+                    <div class="event-detail">💰 参加費：1,000円（LAB会員は無料）</div>
+                    <div class="event-detail">👥 定員：20名</div>
+                </div>
+                <p>今回は「業務効率化のためのプロンプト設計」をテーマに、実践的なワークショップを開催します。</p>
+                <div style="text-align: center;">
+                    <a href="https://room8.co.jp/events/ailab-03" class="button">イベント詳細・申込</a>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="section">
+                <h2>💡 AI LAB会員募集中</h2>
+                <p>月額5,500円で以下の特典が受けられます：</p>
+                <ul>
+                    <li>✅ 隔週イベント参加費無料</li>
+                    <li>✅ Slackコミュニティでの相談・交流</li>
+                    <li>✅ AI活用ツールの優先利用</li>
+                    <li>✅ 限定セミナー・勉強会</li>
+                </ul>
+                <div style="text-align: center;">
+                    <a href="https://room8.co.jp/ailab" class="button">AI LAB詳細</a>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="section">
+                <h2>📰 今月のブログ記事</h2>
+                <p>📝 <a href="https://room8.co.jp/blog" style="color: #667eea;">「AI時代のコワーキングスペース活用術」</a><br>
+                <small style="color: #999;">AIを活用して生産性を上げるワークスタイルをご紹介</small></p>
+            </div>
+
+            <p style="margin-top: 40px; font-size: 14px; color: #666;">
+                ご不明な点がございましたら、お気軽にお問い合わせください。<br>
+                今後ともRoom8をよろしくお願いいたします。
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>株式会社Room8</strong><br>
+            〒486-0931 愛知県春日井市勝川町<br>
+            TEL: xxx-xxxx-xxxx | Email: k_tsuruta@room8.co.jp</p>
+
+            <p style="margin-top: 20px;">
+                <a href="https://room8.co.jp">Webサイト</a> |
+                <a href="{{ unsubscribe }}">配信停止</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
