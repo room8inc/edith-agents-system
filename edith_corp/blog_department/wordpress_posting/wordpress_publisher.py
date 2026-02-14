@@ -289,6 +289,42 @@ class WordPressPublisher:
             "url": mock_url
         }
 
+    def _ensure_unique_slug(self, slug: str) -> str:
+        """スラッグの重複チェック（投稿+固定ページ）。重複時は末尾に連番を付与"""
+
+        if not self.wp_username or not self.wp_app_password:
+            return slug
+
+        candidate = slug
+        suffix = 2
+
+        while True:
+            is_duplicate = False
+
+            for endpoint in ["posts", "pages"]:
+                try:
+                    response = requests.get(
+                        f"{self.wp_api_base}/{endpoint}",
+                        headers={'Authorization': self._get_auth_header()},
+                        params={"slug": candidate, "status": "publish,draft,future,private", "per_page": 1},
+                        timeout=10
+                    )
+                    if response.status_code == 200 and response.json():
+                        is_duplicate = True
+                        existing = response.json()[0]
+                        print(f"[WordPress投稿足軽] スラッグ重複検出: '{candidate}' が {endpoint} (ID:{existing['id']}) に存在")
+                        break
+                except Exception as e:
+                    print(f"[WordPress投稿足軽] スラッグチェックエラー ({endpoint}): {e}")
+
+            if not is_duplicate:
+                if candidate != slug:
+                    print(f"[WordPress投稿足軽] スラッグ変更: '{slug}' → '{candidate}'")
+                return candidate
+
+            candidate = f"{slug}-{suffix}"
+            suffix += 1
+
     def _create_wordpress_post(self, meta_data: Dict[str, Any], content: str, featured_image_id: Optional[int] = None) -> Dict[str, Any]:
         """WordPress記事投稿"""
 
@@ -302,9 +338,13 @@ class WordPressPublisher:
             wp_meta = meta_data.get("wordpress", {})
             scheduled_date = wp_meta.get("scheduled_date")
 
+            # スラッグ重複チェック（投稿+固定ページ）
+            original_slug = meta_data.get("slug", "")
+            unique_slug = self._ensure_unique_slug(original_slug)
+
             post_data = {
                 "title": meta_data.get("title", ""),
-                "slug": meta_data.get("slug", ""),
+                "slug": unique_slug,
                 "content": content,
                 "status": "future" if scheduled_date else "draft",
             }

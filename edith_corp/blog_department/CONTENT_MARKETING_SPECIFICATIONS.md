@@ -120,9 +120,18 @@ section[N]_[title].png         # 廃止（旧旧仕様）
 3. **画像確認** (全画像正常表示確認)
 
 ### Step 4: 公開準備
-1. **WordPress下書き投稿** (自動)
-2. **publish_data.json生成** (自動)
-3. **最終承認待ち** (EDITH判断)
+1. **スラッグ重複チェック** (自動 - `_ensure_unique_slug()`)
+2. **WordPress下書き投稿** (自動)
+3. **publish_data.json生成** (自動)
+4. **最終承認待ち** (EDITH判断)
+
+### スラッグ重複チェック仕様（2026-02-12追加）
+**実装箇所:** `wordpress_posting/wordpress_publisher.py` の `_ensure_unique_slug()`
+**タイミング:** `_create_wordpress_post()` 内、REST API投稿の直前
+**チェック対象:** 投稿（posts）+ 固定ページ（pages）の両方
+**対象ステータス:** publish, draft, future, private（全ステータス）
+**重複時の挙動:** スラッグ末尾に `-2`, `-3`... と連番を自動付与
+**経緯:** 自動投稿時にスラッグが固定ページと重複 → Redirectionプラグインが自動リダイレクト設定 → 投稿ページにアクセスできなくなる問題が発生したため追加
 
 ## 4. 画像生成システム仕様
 
