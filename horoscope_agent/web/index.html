@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星図計算機 — Swiss Ephemeris</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans+JP:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #121628;
+      --bg-deep: #0d1020;
+      --surface: #1a1f3a;
+      --surface-raised: #222850;
+      --border: rgba(196, 175, 120, 0.18);
+      --border-bright: rgba(196, 175, 120, 0.35);
+      --text: #ddd8c8;
+      --text-bright: #f0ece0;
+      --text-dim: rgba(210, 190, 140, 0.55);
+      --gold: #d4bf88;
+      --gold-bright: #ecdcb0;
+      --gold-dim: rgba(212, 191, 136, 0.35);
+      --celestial: #7e9cda;
+      --celestial-bright: #a0b8ee;
+      --fire: #d4785a;
+      --earth: #8fa855;
+      --air: #6ba8b8;
+      --water: #7878c8;
+      --positive: #7ab87a;
+      --negative: #c87a7a;
+      --cardinal: #d4905a;
+      --fixed: #9a78c4;
+      --mutable: #5aaa9a;
+      --font-display: 'Cormorant Garamond', 'Georgia', serif;
+      --font-body: 'IBM Plex Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+      --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      font-weight: 300;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(107, 140, 206, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(196, 175, 120, 0.04) 0%, transparent 60%);
+    }
+
+    /* --- Header --- */
+    .header {
+      text-align: center;
+      padding: 48px 20px 32px;
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+      margin: 20px auto 0;
+    }
+    .header h1 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: 2.4rem;
+      color: var(--gold);
+      letter-spacing: 0.15em;
+      margin-bottom: 6px;
+    }
+    .header .subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* --- Form --- */
+    .form-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .form-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    }
+    .form-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-group.span-2 { grid-column: span 2; }
+    .form-group label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .form-group input,
+    .form-group select {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      color: var(--text-bright);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 300;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(196, 175, 120, 0.08);
+    }
+    .form-group select option {
+      background: var(--bg-deep);
+      color: var(--text);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    button {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold-dim), rgba(196, 175, 120, 0.15));
+      color: var(--gold-bright);
+      border: 1px solid var(--gold-dim);
+      padding: 10px 36px;
+      border-radius: 6px;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(196, 175, 120, 0.35), rgba(196, 175, 120, 0.2));
+      border-color: var(--gold);
+      box-shadow: 0 0 20px rgba(196, 175, 120, 0.1);
+    }
+    .btn-primary:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      padding: 10px 24px;
+      border-radius: 6px;
+    }
+    .btn-secondary:hover {
+      border-color: var(--border-bright);
+      color: var(--text);
+    }
+
+    /* --- Status --- */
+    #status {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 300;
+      padding: 10px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+      letter-spacing: 0.05em;
+    }
+    #status.loading {
+      display: block;
+      background: rgba(107, 140, 206, 0.08);
+      color: var(--celestial);
+      border: 1px solid rgba(107, 140, 206, 0.15);
+    }
+    #status.error {
+      display: block;
+      background: rgba(200, 122, 122, 0.08);
+      color: var(--negative);
+      border: 1px solid rgba(200, 122, 122, 0.15);
+    }
+    #status.success {
+      display: block;
+      background: rgba(122, 184, 122, 0.08);
+      color: var(--positive);
+      border: 1px solid rgba(122, 184, 122, 0.15);
+    }
+
+    /* --- Results --- */
+    #results { display: none; }
+    #results.visible {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+    .section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-bright), transparent);
+    }
+    .section-header {
+      padding: 12px 20px;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      background: rgba(196, 175, 120, 0.03);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .section-header:hover {
+      background: rgba(196, 175, 120, 0.06);
+    }
+    .section-body { padding: 16px 20px; }
+    .section-body.collapsed { display: none; }
+
+    /* --- Summary --- */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    .summary-item {
+      text-align: center;
+      padding: 14px 8px;
+      border-radius: 8px;
+      background: rgba(196, 175, 120, 0.03);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .summary-item:hover {
+      border-color: var(--border-bright);
+    }
+    .summary-item .label {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .summary-item .value {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--text-bright);
+    }
+
+    /* --- Tables --- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-family: var(--font-mono);
+      font-weight: 300;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-bright);
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-weight: 300;
+      font-size: 0.78rem;
+    }
+    tr:hover td {
+      background: rgba(196, 175, 120, 0.02);
+    }
+    .retrograde { color: var(--negative); }
+    .dignity-positive { color: var(--positive); font-size: 0.68rem; }
+    .dignity-negative { color: var(--negative); font-size: 0.68rem; }
+
+    /* --- Balance --- */
+    .balance-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0;
+    }
+    .balance-label {
+      width: 55px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 300;
+      color: var(--text-dim);
+    }
+    .balance-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .balance-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .balance-count {
+      width: 22px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 300;
+      text-align: right;
+      color: var(--text-dim);
+    }
+    .fire    { background: var(--fire); }
+    .earth   { background: var(--earth); }
+    .air     { background: var(--air); }
+    .water   { background: var(--water); }
+    .cardinal { background: var(--cardinal); }
+    .fixed    { background: var(--fixed); }
+    .mutable  { background: var(--mutable); }
+
+    /* --- Chart --- */
+    #chart-container {
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+    #chart-container svg {
+      max-width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 40px rgba(107, 140, 206, 0.06));
+    }
+
+    /* --- JSON --- */
+    .json-output {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 300;
+      max-height: 400px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text-dim);
+    }
+
+    /* --- Share consent --- */
+    .share-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .share-panel.visible { display: block; }
+    .share-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .share-check input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--gold);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .share-check .share-text {
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+    .share-check .share-text strong {
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .share-check .share-text small {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+    .share-actions {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .share-status {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 300;
+      color: var(--positive);
+    }
+
+    /* --- Saved list --- */
+    .saved-list {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .saved-list-title {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .saved-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .saved-item:hover { background: rgba(212, 191, 136, 0.06); }
+    .saved-item .saved-name { color: var(--text-bright); }
+    .saved-item .saved-sign {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+    .saved-item .saved-delete {
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .saved-item .saved-delete:hover { color: var(--negative); background: rgba(200,122,122,0.1); }
+
+    /* --- Footer --- */
+    .footer {
+      text-align: center;
+      padding: 40px 20px 30px;
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+    }
+    .footer a {
+      color: var(--gold);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer a:hover { color: var(--gold-bright); }
+    .footer .yt-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      padding: 8px 20px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .footer .yt-link:hover {
+      border-color: var(--gold-dim);
+      background: rgba(212, 191, 136, 0.05);
+    }
+    .footer .yt-link .yt-icon { font-size: 1.2rem; }
+    .footer .credit {
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+    }
+
+    /* --- Chart filters --- */
+    .chart-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .chart-filters-title {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .chart-filter {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--text);
+      user-select: none;
+    }
+    .chart-filter input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
+    .chart-filter .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .chart-filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      width: 100%;
+    }
+    .chart-filter-separator {
+      width: 100%;
+      height: 0;
+      margin: 4px 0;
+    }
+    .orb-slider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .orb-slider label {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    .orb-slider input[type="range"] {
+      flex: 1;
+      max-width: 200px;
+      accent-color: var(--gold);
+      height: 4px;
+    }
+    .orb-slider .orb-value {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: var(--gold);
+      min-width: 24px;
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+      .header h1 { font-size: 1.8rem; }
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .form-group.span-2 { grid-column: span 2; }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .container { padding: 0 16px 40px; }
+    }
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.span-2 { grid-column: span 1; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* --- チャットUI --- */
+    .chat-msg {
+      padding: 10px 14px;
+      border-radius: 10px;
+      max-width: 85%;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .chat-msg--user {
+      align-self: flex-end;
+      background: rgba(180, 160, 100, 0.2);
+      border: 1px solid rgba(180, 160, 100, 0.3);
+      color: var(--color-text, #e0e0e0);
+    }
+    .chat-msg--ai {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--color-text, #e0e0e0);
+    }
+    .chat-quick-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--color-text, #e0e0e0);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .chat-quick-btn:hover {
+      background: rgba(180, 160, 100, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>星 図 計 算 機</h1>
+    <p class="subtitle">Swiss Ephemeris WASM &mdash; ブラウザ内天文暦計算</p>
+  </div>
+
+  <div class="container">
+    <!-- Form -->
+    <div class="form-panel" id="birth-form">
+      <div class="form-title">出生データ</div>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label>名前</label>
+          <input type="text" id="name" value="" placeholder="名前を入力">
+        </div>
+        <div class="form-group">
+          <label>年</label>
+          <input type="number" id="year" value="1990" min="1800" max="2400">
+        </div>
+        <div class="form-group">
+          <label>月</label>
+          <input type="number" id="month" value="1" min="1" max="12">
+        </div>
+        <div class="form-group">
+          <label>日</label>
+          <input type="number" id="day" value="1" min="1" max="31">
+        </div>
+        <div class="form-group">
+          <label>時</label>
+          <input type="number" id="hour" value="12" min="0" max="23">
+        </div>
+        <div class="form-group">
+          <label>分</label>
+          <input type="number" id="minute" value="0" min="0" max="59">
+        </div>
+        <div class="form-group">
+          <label>出生地</label>
+          <select id="city">
+            <option value="">-- 選択 --</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>住所・施設名で検索</label>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="geo-query" placeholder="例: 安城更生病院" style="flex: 1;">
+            <button type="button" id="geo-search-btn" style="white-space: nowrap; padding: 4px 12px;">検索</button>
+          </div>
+          <div id="geo-results" style="font-size: 12px; margin-top: 4px; color: var(--color-text-muted, #999);"></div>
+        </div>
+        <div class="form-group">
+          <label>ハウス方式</label>
+          <select id="house-system">
+            <option value="P" selected>プラシーダス</option>
+            <option value="K">コッホ</option>
+            <option value="O">ポーフィリー</option>
+            <option value="R">レジオモンタナス</option>
+            <option value="C">カンパヌス</option>
+            <option value="E">イコール</option>
+            <option value="W">ホールサイン</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>緯度</label>
+          <input type="number" id="lat" step="0.0001" placeholder="35.1815">
+        </div>
+        <div class="form-group">
+          <label>経度</label>
+          <input type="number" id="lng" step="0.0001" placeholder="136.9066">
+        </div>
+        <div class="form-group">
+          <label>時差 (UTC)</label>
+          <input type="number" id="tz" value="9" step="0.5" placeholder="9">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button id="calc-btn" class="btn-primary" disabled>計 算</button>
+        <button id="export-btn" class="btn-secondary" style="display:none">JSON表示</button>
+        <button id="copy-btn" class="btn-secondary" style="display:none">JSONコピー</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <!-- Results -->
+    <div id="results">
+      <div class="section">
+        <div class="section-header">基本情報</div>
+        <div class="section-body">
+          <div class="summary-grid" id="summary-grid"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">チャート</div>
+        <div class="section-body" id="chart-section">
+          <div class="chart-filters" id="chart-filters">
+            <div class="chart-filters-title">アスペクト表示</div>
+            <div class="chart-filter-group">
+              <label class="chart-filter"><input type="checkbox" data-aspect="conjunction" checked><span class="dot" style="background:#e0d098"></span>コンジャンクション (0°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="opposition" checked><span class="dot" style="background:#f09090"></span>オポジション (180°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="trine" checked><span class="dot" style="background:#90e090"></span>トライン (120°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="square" checked><span class="dot" style="background:#f09090"></span>スクエア (90°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="sextile" checked><span class="dot" style="background:#80d0e0"></span>セクスタイル (60°)</label>
+            </div>
+            <div class="chart-filter-separator"></div>
+            <div class="chart-filters-title">マイナーアスペクト</div>
+            <div class="chart-filter-group">
+              <label class="chart-filter"><input type="checkbox" data-aspect="quincunx"><span class="dot" style="background:#c098e0"></span>クインカンクス (150°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="semi_square"><span class="dot" style="background:#e0b070"></span>セミスクエア (45°)</label>
+              <label class="chart-filter"><input type="checkbox" data-aspect="semi_sextile"><span class="dot" style="background:#70d0b0"></span>セミセクスタイル (30°)</label>
+            </div>
+            <div class="chart-filter-separator"></div>
+            <div class="orb-slider">
+              <label>最大オーブ</label>
+              <input type="range" id="orb-range" min="1" max="10" value="5" step="1">
+              <span class="orb-value" id="orb-value">5°</span>
+            </div>
+          </div>
+          <div id="chart-container"></div>
+          <div id="chat-start-area" style="display: none; text-align: center; padding: 16px 0 8px;">
+            <button id="chat-start-btn" class="btn-primary" style="font-size: 16px; padding: 12px 32px;">
+              AI鑑定を受ける
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">天体・感受点</div>
+        <div class="section-body">
+          <table id="planets-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>天体</th>
+                <th>星座</th>
+                <th>度数</th>
+                <th>室</th>
+                <th>速度</th>
+                <th>品位</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">ハウスカスプ</div>
+        <div class="section-body">
+          <table id="houses-table">
+            <thead>
+              <tr>
+                <th>室</th>
+                <th>星座</th>
+                <th>度数</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">アスペクト</div>
+        <div class="section-body">
+          <table id="aspects-table">
+            <thead>
+              <tr>
+                <th>天体1</th>
+                <th>相</th>
+                <th>天体2</th>
+                <th>誤差</th>
+                <th>動き</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">エレメント・クオリティ</div>
+        <div class="section-body" id="balance-section"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">月相</div>
+        <div class="section-body" id="lunar-section"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">追加感受点</div>
+        <div class="section-body">
+          <table id="extra-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>名称</th>
+                <th>星座</th>
+                <th>度数</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section" id="json-section" style="display:none">
+        <div class="section-header">生データ (JSON)</div>
+        <div class="section-body">
+          <div class="json-output" id="json-output"></div>
+        </div>
+      </div>
+
+      <!-- Share / Save -->
+      <div class="share-panel" id="share-panel">
+        <label class="share-check">
+          <input type="checkbox" id="share-consent">
+          <div class="share-text">
+            <strong>YouTubeで紹介してもOK</strong><br>
+            チェックを入れて保存すると、M8小隊のYouTubeコンテンツで<br>星図データを紹介させていただく場合があります。
+            <small>※ 本名でなくてOKです。ニックネームで保存してください。</small>
+          </div>
+        </label>
+        <div class="share-actions">
+          <button id="save-btn" class="btn-primary">保 存</button>
+          <span class="share-status" id="save-status"></span>
+        </div>
+        <div class="saved-list" id="saved-list"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="https://www.youtube.com/@M8SHOWTIME" target="_blank" rel="noopener" class="yt-link">
+        <span class="yt-icon">▶</span>
+        M8小隊 YouTube
+      </a>
+      <div class="credit">Powered by Swiss Ephemeris &mdash; 天文暦精密計算</div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
